@@ -8,7 +8,7 @@ import (
 
 // Constantes principais da cifra
 const BlockSize = 16
-const Rounds = 10
+const Rounds = 40
 
 // --- Funções auxiliares ARX ---
 

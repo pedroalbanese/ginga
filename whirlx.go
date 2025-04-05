@@ -1,13 +1,16 @@
 package whirlx
 
 import (
+	"crypto/cipher"
 	"errors"
 	"math/bits"
 )
 
-// Cifra ARX reversível de 16 bytes com chave de 16 ou 32 bytes
+// Constantes principais da cifra
 const BlockSize = 16
 const Rounds = 10
+
+// --- Funções auxiliares ARX ---
 
 func add(x, y byte) byte      { return x + y }
 func sub(x, y byte) byte      { return x - y }
@@ -53,13 +56,15 @@ func subKey(k []byte, round, i int) byte {
 	return base
 }
 
+// --- Funções principais de cifra ---
+
 // Encrypt cifra um bloco de 16 bytes com uma chave de 16 ou 32 bytes
 func Encrypt(plain, key []byte) ([]byte, error) {
 	if len(plain) != BlockSize {
-		return nil, errors.New("invalid plaintext size: must be 16 bytes")
+		return nil, errors.New("whirlx: invalid plaintext size (must be 16 bytes)")
 	}
 	if len(key) != 16 && len(key) != 32 {
-		return nil, errors.New("invalid key size: must be 16 or 32 bytes")
+		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
 	}
 
 	c := make([]byte, BlockSize)
@@ -76,16 +81,16 @@ func Encrypt(plain, key []byte) ([]byte, error) {
 }
 
 // Decrypt reverte o bloco cifrado usando a chave
-func Decrypt(cipher, key []byte) ([]byte, error) {
-	if len(cipher) != BlockSize {
-		return nil, errors.New("invalid cipher size: must be 16 bytes")
+func Decrypt(ciphertext, key []byte) ([]byte, error) {
+	if len(ciphertext) != BlockSize {
+		return nil, errors.New("whirlx: invalid cipher size (must be 16 bytes)")
 	}
 	if len(key) != 16 && len(key) != 32 {
-		return nil, errors.New("invalid key size: must be 16 or 32 bytes")
+		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
 	}
 
 	p := make([]byte, BlockSize)
-	copy(p, cipher)
+	copy(p, ciphertext)
 
 	for r := Rounds - 1; r >= 0; r-- {
 		invMixState(p)
@@ -95,4 +100,47 @@ func Decrypt(cipher, key []byte) ([]byte, error) {
 		}
 	}
 	return p, nil
+}
+
+// --- Integração com cipher.Block (NewCipher) ---
+
+type whirlxCipher struct {
+	key []byte
+}
+
+// NewCipher cria um objeto cipher.Block compatível com modos de operação
+func NewCipher(key []byte) (cipher.Block, error) {
+	if len(key) != 16 && len(key) != 32 {
+		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
+	}
+	return &whirlxCipher{key: append([]byte(nil), key...)}, nil
+}
+
+// BlockSize retorna o tamanho do bloco da cifra (16 bytes)
+func (c *whirlxCipher) BlockSize() int {
+	return BlockSize
+}
+
+// Encrypt cifra exatamente um bloco de 16 bytes
+func (c *whirlxCipher) Encrypt(dst, src []byte) {
+	if len(src) < BlockSize || len(dst) < BlockSize {
+		panic("whirlx: input not full block")
+	}
+	out, err := Encrypt(src[:BlockSize], c.key)
+	if err != nil {
+		panic("whirlx: encryption failed: " + err.Error())
+	}
+	copy(dst, out)
+}
+
+// Decrypt decifra exatamente um bloco de 16 bytes
+func (c *whirlxCipher) Decrypt(dst, src []byte) {
+	if len(src) < BlockSize || len(dst) < BlockSize {
+		panic("whirlx: input not full block")
+	}
+	out, err := Decrypt(src[:BlockSize], c.key)
+	if err != nil {
+		panic("whirlx: decryption failed: " + err.Error())
+	}
+	copy(dst, out)
 }

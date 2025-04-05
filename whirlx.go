@@ -8,7 +8,7 @@ import (
 
 // Constantes principais da cifra
 const BlockSize = 16
-const Rounds = 32
+const Rounds = 16
 
 // --- Funções auxiliares ARX ---
 
@@ -19,6 +19,20 @@ func rotr(x byte, n int) byte { return bits.RotateLeft8(x, -n) }
 
 func confuse(x byte) byte   { return rotl(x^0xA5, 3) }
 func deconfuse(x byte) byte { return rotr(x, 3) ^ 0xA5 }
+
+func confuseN(x byte, n int) byte {
+	for i := 0; i < n; i++ {
+		x = confuse(x)
+	}
+	return x
+}
+
+func deconfuseN(x byte, n int) byte {
+	for i := 0; i < n; i++ {
+		x = deconfuse(x)
+	}
+	return x
+}
 
 func mixState(state []byte) {
 	for i := 0; i < len(state); i++ {
@@ -34,7 +48,7 @@ func invMixState(state []byte) {
 
 func round(x, k byte, r int) byte {
 	x = add(x, k)
-	x = confuse(x)
+	x = confuseN(x, 16) // mais confusão!
 	x = rotl(x, (r+3)%8)
 	x ^= k
 	x = rotl(x, (r+5)%8)
@@ -45,7 +59,7 @@ func invRound(x, k byte, r int) byte {
 	x = rotr(x, (r+5)%8)
 	x ^= k
 	x = rotr(x, (r+3)%8)
-	x = deconfuse(x)
+	x = deconfuseN(x, 16)
 	x = sub(x, k)
 	return x
 }

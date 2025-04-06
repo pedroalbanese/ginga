@@ -20,46 +20,17 @@ func rotr(x byte, n int) byte { return bits.RotateLeft8(x, -n) }
 // func confuse(x byte) byte   { return rotl(x^0xA5, 3) }
 // func deconfuse(x byte) byte { return rotr(x, 3) ^ 0xA5 }
 
-var confuseTable [256]byte
-var deconfuseTable [256]byte
-
-func init() {
-	// Gerar uma tabela de confusão pseudoaleatória com mapeamento bijetivo
-	perm := make([]byte, 256)
-	for i := range perm {
-		perm[i] = byte(i)
-	}
-
-	// Shuffle usando um PRNG fixo (pra garantir reversibilidade)
-	seed := byte(0xA5)
-	for i := 0; i < 256; i++ {
-		j := int(seed) % 256
-		perm[i], perm[j] = perm[j], perm[i]
-		seed = rotl(seed^perm[i]^byte(i), 3)
-	}
-
-	// Construir tabelas
-	for i := 0; i < 256; i++ {
-		confuseTable[i] = perm[i]
-		deconfuseTable[perm[i]] = byte(i)
-	}
-}
-
 func confuse(x byte) byte {
-	x = x ^ 0xA7
-	x = rotl(x, 3)
-	x = confuseTable[x]
-	x ^= 0x5C
-	x = rotl(x, 2)
+	x ^= 0xA5        // 1. XOR
+	x = add(x, 0x3C) // 2. ADD
+	x = rotl(x, 3)   // 3. ROTATE LEFT
 	return x
 }
 
 func deconfuse(x byte) byte {
-	x = rotr(x, 2)
-	x ^= 0x5C
-	x = deconfuseTable[x]
-	x = rotr(x, 3)
-	x ^= 0xA7
+	x = rotr(x, 3)   // 1. ROTATE RIGHT (inverse of rotl)
+	x = sub(x, 0x3C) // 2. SUB (inverse of add)
+	x ^= 0xA5        // 3. XOR (same as XOR inverse)
 	return x
 }
 

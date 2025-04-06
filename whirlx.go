@@ -17,8 +17,51 @@ func sub(x, y byte) byte      { return x - y }
 func rotl(x byte, n int) byte { return bits.RotateLeft8(x, n) }
 func rotr(x byte, n int) byte { return bits.RotateLeft8(x, -n) }
 
-func confuse(x byte) byte   { return rotl(x^0xA5, 3) }
-func deconfuse(x byte) byte { return rotr(x, 3) ^ 0xA5 }
+// func confuse(x byte) byte   { return rotl(x^0xA5, 3) }
+// func deconfuse(x byte) byte { return rotr(x, 3) ^ 0xA5 }
+
+var confuseTable [256]byte
+var deconfuseTable [256]byte
+
+func init() {
+	// Gerar uma tabela de confusão pseudoaleatória com mapeamento bijetivo
+	perm := make([]byte, 256)
+	for i := range perm {
+		perm[i] = byte(i)
+	}
+
+	// Shuffle usando um PRNG fixo (pra garantir reversibilidade)
+	seed := byte(0xA5)
+	for i := 0; i < 256; i++ {
+		j := int(seed) % 256
+		perm[i], perm[j] = perm[j], perm[i]
+		seed = rotl(seed^perm[i]^byte(i), 3)
+	}
+
+	// Construir tabelas
+	for i := 0; i < 256; i++ {
+		confuseTable[i] = perm[i]
+		deconfuseTable[perm[i]] = byte(i)
+	}
+}
+
+func confuse(x byte) byte {
+	x = x ^ 0xA7
+	x = rotl(x, 3)
+	x = confuseTable[x]
+	x ^= 0x5C
+	x = rotl(x, 2)
+	return x
+}
+
+func deconfuse(x byte) byte {
+	x = rotr(x, 2)
+	x ^= 0x5C
+	x = deconfuseTable[x]
+	x = rotr(x, 3)
+	x ^= 0xA7
+	return x
+}
 
 func confuseN(x byte, n int) byte {
 	for i := 0; i < n; i++ {
@@ -48,7 +91,7 @@ func invMixState(state []byte) {
 
 func round(x, k byte, r int) byte {
 	x = add(x, k)
-	x = confuseN(x, 16) // mais confusão!
+	x = confuseN(x, 4) // mais confusão!
 	x = rotl(x, (r+3)%8)
 	x ^= k
 	x = rotl(x, (r+5)%8)
@@ -59,7 +102,7 @@ func invRound(x, k byte, r int) byte {
 	x = rotr(x, (r+5)%8)
 	x ^= k
 	x = rotr(x, (r+3)%8)
-	x = deconfuseN(x, 16)
+	x = deconfuseN(x, 4)
 	x = sub(x, k)
 	return x
 }

@@ -78,9 +78,26 @@ func invRound(x, k byte, r int) byte {
 	return x
 }
 
+/*
 func subKey(k []byte, round, i int) byte {
 //	base := k[(i+round)%len(k)]
 	base := k[(i+round)&15] // se len(k) == 16
+	base = rotl(base^byte(i*73+round*91), (round+i)%8)
+	return base
+}
+*/
+
+func subKey(k []byte, round, i int) byte {
+	var mask byte
+	if len(k) == 16 {
+		mask = 15 
+	} else if len(k) == 32 {
+		mask = 31
+	} else {
+		panic("subKey: unsupported key size")
+	}
+
+	base := k[(i+round)&int(mask)]
 	base = rotl(base^byte(i*73+round*91), (round+i)%8)
 	return base
 }

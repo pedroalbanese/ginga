@@ -99,7 +99,8 @@ func subKey(k []byte, round, i int) byte {
 	}
 	idx := (i + round) & mask // substitui % por &
 	base := k[idx]
-	base = rotl(base^byte(i*73+round*91), (round+i)%8)
+//	base = rotl(base^byte(i*73+round*91), (round+i)%8)
+	base = rotl(base^byte(i*73+round*91), (round+i)&7)
 	return base
 }
 

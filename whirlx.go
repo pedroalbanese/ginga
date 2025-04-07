@@ -127,7 +127,7 @@ func Encrypt(plain, key []byte) ([]byte, error) {
 			c[i] = round(c[i], k, r)
 		}
 //		mixState(c)
-		mixState(c[:])
+		mixState(&c)
 	}
 //	return c, nil
 	return c[:], nil
@@ -149,7 +149,7 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	copy(p[:], ciphertext)
 	
 	for r := Rounds - 1; r >= 0; r-- {
-		invMixState(p)
+		invMixState(&p)
 		for i := range p {
 			k := subKey(key, r, i)
 			p[i] = invRound(p[i], k, r)

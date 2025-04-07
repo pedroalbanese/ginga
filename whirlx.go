@@ -48,6 +48,7 @@ func deconfuseN(x byte, n int) byte {
 	return x
 }
 
+/*
 func mixState(state []byte) {
 	for i := 0; i < len(state); i++ {
 		state[i] = rotl(state[i]^state[(i+1)%len(state)], 3)
@@ -59,20 +60,37 @@ func invMixState(state []byte) {
 		state[i] = rotr(state[i], 3) ^ state[(i+1)%len(state)]
 	}
 }
+*/
+
+func mixState(state *[16]byte) {
+	for i := 0; i < 16; i++ {
+		state[i] = rotl(state[i]^state[(i+1)&15], 3)
+	}
+}
+
+func invMixState(state *[16]byte) {
+	for i := 15; i >= 0; i-- {
+		state[i] = rotr(state[i], 3) ^ state[(i+1)&15]
+	}
+}
 
 func round(x, k byte, r int) byte {
 	x = add(x, k)
 	x = confuseN(x, 4) // mais confusão!
-	x = rotl(x, (r+3)%8)
+//	x = rotl(x, (r+3)%8)
+	x = rotl(x, (r+3)&7)
 	x ^= k
-	x = rotl(x, (r+5)%8)
+//	x = rotl(x, (r+5)%8)
+	x = rotl(x, (r+5)&7)
 	return x
 }
 
 func invRound(x, k byte, r int) byte {
-	x = rotr(x, (r+5)%8)
+//	x = rotr(x, (r+5)%8)
+	x = rotr(x, (r+5)&7)
 	x ^= k
-	x = rotr(x, (r+3)%8)
+//	x = rotr(x, (r+3)%8)
+	x = rotr(x, (r+3)&7)
 	x = deconfuseN(x, 4)
 	x = sub(x, k)
 	return x
@@ -115,17 +133,22 @@ func Encrypt(plain, key []byte) ([]byte, error) {
 		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
 	}
 
-	c := make([]byte, BlockSize)
-	copy(c, plain)
+//	c := make([]byte, BlockSize)
+//	copy(c, plain)
 
+	var c [16]byte
+	copy(c[:], plain)
+	
 	for r := 0; r < Rounds; r++ {
 		for i := range c {
 			k := subKey(key, r, i)
 			c[i] = round(c[i], k, r)
 		}
-		mixState(c)
+//		mixState(c)
+		mixState(c[:])
 	}
-	return c, nil
+//	return c, nil
+	return c[:], nil
 }
 
 // Decrypt reverte o bloco cifrado usando a chave
@@ -137,9 +160,12 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
 	}
 
-	p := make([]byte, BlockSize)
-	copy(p, ciphertext)
+//	p := make([]byte, BlockSize)
+//	copy(p, ciphertext)
 
+	var p [16]byte
+	copy(p[:], ciphertext)
+	
 	for r := Rounds - 1; r >= 0; r-- {
 		invMixState(p)
 		for i := range p {
@@ -147,7 +173,8 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 			p[i] = invRound(p[i], k, r)
 		}
 	}
-	return p, nil
+//	return p, nil
+	return p[:], nil
 }
 
 // --- Integração com cipher.Block (NewCipher) ---

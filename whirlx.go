@@ -96,22 +96,12 @@ func invRound(x, k byte, r int) byte {
 	return x
 }
 
-/*
 func subKey(k []byte, round, i int) byte {
 //	base := k[(i+round)%len(k)]
 	base := k[(i+round)&15] // se len(k) == 32
 //	base = rotl(base^byte(i*73+round*91), (round+i)%8)
 	base = rotl(base^byte(i*73+round*91), (round+i)&7)
 	return base
-}
-*/
-
-func subKey(k []byte, round, i int) byte {
-	n := len(k)
-	mix := byte((round*17 + i*31)&250)
-	idx := (i*7 + round*13) % n
-	base := k[idx] ^ mix
-	return rotl(base, (round+i)&7)
 }
 
 // --- Funções principais de cifra ---
@@ -121,8 +111,8 @@ func Encrypt(plain, key []byte) ([]byte, error) {
 	if len(plain) != BlockSize {
 		return nil, errors.New("whirlx: invalid plaintext size (must be 16 bytes)")
 	}
-	if len(key) != 16 && len(key) != 32 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
+	if len(key) != 16 {
+		return nil, errors.New("whirlx: invalid key size (must be 16 bytes)")
 	}
 
 //	c := make([]byte, BlockSize)
@@ -148,8 +138,8 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	if len(ciphertext) != BlockSize {
 		return nil, errors.New("whirlx: invalid cipher size (must be 16 bytes)")
 	}
-	if len(key) != 16 && len(key) != 32 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
+	if len(key) != 16 {
+		return nil, errors.New("whirlx: invalid key size (must be 16 bytes)")
 	}
 
 //	p := make([]byte, BlockSize)

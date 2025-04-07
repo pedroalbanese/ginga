@@ -88,16 +88,17 @@ func subKey(k []byte, round, i int) byte {
 */
 
 func subKey(k []byte, round, i int) byte {
-	var mask byte
-	if len(k) == 16 {
-		mask = 15 
-	} else if len(k) == 32 {
-		mask = 31
-	} else {
-		panic("subKey: unsupported key size")
+	var mask int
+	switch len(k) {
+	case 16:
+		mask = 15 // 0b00001111
+	case 32:
+		mask = 31 // 0b00011111
+	default:
+		panic("subKey: chave inválida")
 	}
-
-	base := k[(i+round)&int(mask)]
+	idx := (i + round) & mask // substitui % por &
+	base := k[idx]
 	base = rotl(base^byte(i*73+round*91), (round+i)%8)
 	return base
 }

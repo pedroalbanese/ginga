@@ -79,7 +79,8 @@ func invRound(x, k byte, r int) byte {
 }
 
 func subKey(k []byte, round, i int) byte {
-	base := k[(i+round)%len(k)]
+//	base := k[(i+round)%len(k)]
+	base := k[(i+round)&15] // se len(k) == 16
 	base = rotl(base^byte(i*73+round*91), (round+i)%8)
 	return base
 }

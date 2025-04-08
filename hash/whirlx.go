@@ -89,7 +89,8 @@ func (h *whirlxHash) processBlock(block []byte) {
 	// faz a compressão com os rounds
 	for r := 0; r < internalRounds; r++ {
 		for i := 0; i < 8; i++ {
-			k := subKey32(&m, r, i%4)
+//			k := subKey32(&m, r, i%4)
+			k := subKey32(&m, r, i&3)
 			h.state[i] = round32(h.state[i], k, r)
 		}
 		mixState256(&h.state)
@@ -97,7 +98,8 @@ func (h *whirlxHash) processBlock(block []byte) {
 
 	// aplica Miyaguchi-Preneel: H = f(H, M) ⊕ M ⊕ H
 	for i := 0; i < 8; i++ {
-		h.state[i] ^= m[i%4] ^ prev[i]
+//		h.state[i] ^= m[i%4] ^ prev[i]
+		h.state[i] ^= m[i&3] ^ prev[i]
 	}
 }
 
@@ -124,12 +126,14 @@ func round32(x, k uint32, r int) uint32 {
 }
 
 func subKey32(k *[4]uint32, round, i int) uint32 {
-	base := k[(i+round)%4]
+//	base := k[(i+round)%4]
+	base := k[(i+round)&3]
 	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
 }
 
 func mixState256(state *[8]uint32) {
 	for i := 0; i < 8; i++ {
-		state[i] ^= rotl32(state[(i+1)%8], (5*i+11)%32)
+//		state[i] ^= rotl32(state[(i+1)%8], (5*i+11)%32)
+		state[i] ^= rotl32(state[(i+1)&7], (5*i+11)&31)
 	}
 }

@@ -145,8 +145,8 @@ type whirlxCipher struct {
 
 // NewCipher cria um objeto cipher.Block compatível com modos de operação
 func NewCipher(key []byte) (cipher.Block, error) {
-	if len(key) != 16 && len(key) != 32 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
+	if len(key) != 32 {
+		return nil, errors.New("whirlx: invalid key size (must be 32 bytes)")
 	}
 	return &whirlxCipher{key: append([]byte(nil), key...)}, nil
 }

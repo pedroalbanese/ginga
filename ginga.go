@@ -139,7 +139,7 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 
 // --- Integração com cipher.Block (NewCipher) ---
 
-type whirlxCipher struct {
+type gingaCipher struct {
 	key []byte
 }
 
@@ -148,16 +148,16 @@ func NewCipher(key []byte) (cipher.Block, error) {
 	if len(key) != 32 {
 		return nil, errors.New("whirlx: invalid key size (must be 32 bytes)")
 	}
-	return &whirlxCipher{key: append([]byte(nil), key...)}, nil
+	return &gingaCipher{key: append([]byte(nil), key...)}, nil
 }
 
 // BlockSize retorna o tamanho do bloco da cifra (16 bytes)
-func (c *whirlxCipher) BlockSize() int {
+func (c *gingaCipher) BlockSize() int {
 	return BlockSize
 }
 
 // Encrypt cifra exatamente um bloco de 16 bytes
-func (c *whirlxCipher) Encrypt(dst, src []byte) {
+func (c *gingaCipher) Encrypt(dst, src []byte) {
 	if len(src) < BlockSize || len(dst) < BlockSize {
 		panic("whirlx: input not full block")
 	}
@@ -169,7 +169,7 @@ func (c *whirlxCipher) Encrypt(dst, src []byte) {
 }
 
 // Decrypt decifra exatamente um bloco de 16 bytes
-func (c *whirlxCipher) Decrypt(dst, src []byte) {
+func (c *gingaCipher) Decrypt(dst, src []byte) {
 	if len(src) < BlockSize || len(dst) < BlockSize {
 		panic("whirlx: input not full block")
 	}

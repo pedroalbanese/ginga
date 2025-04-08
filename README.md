@@ -1,2 +1,2 @@
-# whirlx
-WhirlX Block Cipher
+# Ginga
+Ginga Lightweight Block Cipher & Hash Function

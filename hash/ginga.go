@@ -12,7 +12,7 @@ const (
 	internalRounds = 8
 )
 
-type whirlxHash struct {
+type gingaHash struct {
 	state [8]uint32
 	buf   []byte
 	len   uint64

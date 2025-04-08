@@ -10,7 +10,7 @@ import (
 	"time"
 	"sort"
 
-	"github.com/pedroalbanese/whirlx"
+	"github.com/pedroalbanese/ginga"
 )
 
 // --- Utils ---
@@ -26,41 +26,41 @@ func bitDiff(a, b []byte) int {
 // --- Testes ---
 
 func testAvalancheKey(plain, key []byte) {
-	fmt.Println("\n🌪 Avalanche na Chave (WhirlX):")
-	original, _ := whirlx.Encrypt(plain, key)
+	fmt.Println("\n🌪 Avalanche na Chave (Ginga):")
+	original, _ := ginga.Encrypt(plain, key)
 
 	for i := 0; i < len(key)*8; i++ {
 		modKey := make([]byte, len(key))
 		copy(modKey, key)
 		modKey[i/8] ^= 1 << (i % 8)
 
-		modCipher, _ := whirlx.Encrypt(plain, modKey)
+		modCipher, _ := ginga.Encrypt(plain, modKey)
 		diff := bitDiff(original, modCipher)
 		fmt.Printf("Bit %3d modificado → Diferença: %3d bits (%.2f%%)\n", i, diff, 100*float64(diff)/128.0)
 	}
 }
 
 func testAvalanchePlain(plain, key []byte) {
-	fmt.Println("\n🌊 Avalanche no Plaintext (WhirlX):")
-	original, _ := whirlx.Encrypt(plain, key)
+	fmt.Println("\n🌊 Avalanche no Plaintext (Ginga):")
+	original, _ := ginga.Encrypt(plain, key)
 
 	for i := 0; i < len(plain)*8; i++ {
 		modPlain := make([]byte, len(plain))
 		copy(modPlain, plain)
 		modPlain[i/8] ^= 1 << (i % 8)
 
-		modCipher, _ := whirlx.Encrypt(modPlain, key)
+		modCipher, _ := ginga.Encrypt(modPlain, key)
 		diff := bitDiff(original, modCipher)
 		fmt.Printf("Bit %3d modificado → Diferença: %3d bits (%.2f%%)\n", i, diff, 100*float64(diff)/128.0)
 	}
 }
 
 func testGlobalAvalanchePlain(plain, key []byte) {
-	original, _ := whirlx.Encrypt(plain, key)
+	original, _ := ginga.Encrypt(plain, key)
 	fmt.Println("\n🌪 Teste Global de Avalanche no Plaintext (vários vetores):")
 
 	const numTests = 1000
-	const inputLen = whirlx.BlockSize
+	const inputLen = ginga.BlockSize
 	const totalBits = inputLen * 8
 
 	diffs := make([]int, 0, numTests*totalBits)
@@ -68,7 +68,7 @@ func testGlobalAvalanchePlain(plain, key []byte) {
 	for t := 0; t < numTests; t++ {
 		plain := make([]byte, inputLen)
 		rand.Read(plain)
-		original, _ := whirlx.Encrypt(plain, key)
+		original, _ := ginga.Encrypt(plain, key)
 
 		for i := 0; i < totalBits; i++ {
 			modPlain := make([]byte, inputLen)
@@ -76,7 +76,7 @@ func testGlobalAvalanchePlain(plain, key []byte) {
 
 			modPlain[i/8] ^= 1 << (i % 8)
 
-			modCipher, _ := whirlx.Encrypt(modPlain, key)
+			modCipher, _ := ginga.Encrypt(modPlain, key)
 			diff := bitDiff(original, modCipher)
 			diffs = append(diffs, diff)
 		}
@@ -110,13 +110,13 @@ func testGlobalAvalanchePlain(plain, key []byte) {
 }
 
 func testDifferentialResistance(plain, key []byte) {
-	fmt.Println("\n🔁 Resistência Diferencial (WhirlX):")
-	original, _ := whirlx.Encrypt(plain, key)
+	fmt.Println("\n🔁 Resistência Diferencial (Ginga):")
+	original, _ := ginga.Encrypt(plain, key)
 	mod := make([]byte, len(plain))
 	copy(mod, plain)
 	mod[len(mod)-1] ^= 0xFF
 
-	altered, _ := whirlx.Encrypt(mod, key)
+	altered, _ := ginga.Encrypt(mod, key)
 	diff := bitDiff(original, altered)
 	fmt.Printf("Alterando último byte → Diferença: %d bits (%.2f%%)\n", diff, 100*float64(diff)/128.0)
 }
@@ -129,7 +129,7 @@ func testBitDistribution(key []byte) {
 		plain := make([]byte, 16)
 		rand.Read(plain)
 
-		c, _ := whirlx.Encrypt(plain, key)
+		c, _ := ginga.Encrypt(plain, key)
 		for _, b := range c {
 			ones += bits.OnesCount8(b)
 			totalBits += 8
@@ -139,13 +139,13 @@ func testBitDistribution(key []byte) {
 }
 
 func testInversibility(key []byte) {
-	fmt.Println("\n♻️ Inversibilidade WhirlX:")
+	fmt.Println("\n♻️ Inversibilidade Ginga:")
 	for i := 0; i < 1000; i++ {
-		plain := make([]byte, whirlx.BlockSize)
+		plain := make([]byte, ginga.BlockSize)
 		rand.Read(plain)
 
-		cipher, _ := whirlx.Encrypt(plain, key)
-		if len(cipher) != whirlx.BlockSize {
+		cipher, _ := ginga.Encrypt(plain, key)
+		if len(cipher) != ginga.BlockSize {
 			fmt.Println("❌ Erro no tamanho do ciphertext!")
 			return
 		}
@@ -154,14 +154,14 @@ func testInversibility(key []byte) {
 }
 
 func testByteUniformity(key []byte) {
-	fmt.Println("\n📈 Uniformidade dos Bytes (WhirlX):")
+	fmt.Println("\n📈 Uniformidade dos Bytes (Ginga):")
 	counts := make([]int, 256)
 	samples := 10000
 
 	for i := 0; i < samples; i++ {
-		plain := make([]byte, whirlx.BlockSize)
+		plain := make([]byte, ginga.BlockSize)
 		rand.Read(plain)
-		c, _ := whirlx.Encrypt(plain, key)
+		c, _ := ginga.Encrypt(plain, key)
 
 		for _, b := range c {
 			counts[b]++
@@ -169,7 +169,7 @@ func testByteUniformity(key []byte) {
 	}
 
 	entropia := 0.0
-	total := float64(whirlx.BlockSize * samples)
+	total := float64(ginga.BlockSize * samples)
 	for _, v := range counts {
 		p := float64(v) / total
 		if p > 0 {
@@ -180,17 +180,17 @@ func testByteUniformity(key []byte) {
 }
 
 func testDiffusion(key []byte) {
-	fmt.Println("\n🌐 Teste de Difusão (WhirlX):")
-	base := make([]byte, whirlx.BlockSize)
+	fmt.Println("\n🌐 Teste de Difusão (Ginga):")
+	base := make([]byte, ginga.BlockSize)
 	rand.Read(base)
-	original, _ := whirlx.Encrypt(base, key)
+	original, _ := ginga.Encrypt(base, key)
 
 	for i := 0; i < len(base); i++ {
 		mod := make([]byte, len(base))
 		copy(mod, base)
 		mod[i] ^= 0xFF
 
-		modCipher, _ := whirlx.Encrypt(mod, key)
+		modCipher, _ := ginga.Encrypt(mod, key)
 		byteDiff := 0
 		for j := range modCipher {
 			if modCipher[j] != original[j] {
@@ -202,21 +202,21 @@ func testDiffusion(key []byte) {
 }
 
 func testChiSquared(key []byte) {
-	fmt.Println("\n📊 Teste de Chi-Squared para Avaliar Uniformidade (WhirlX):")
+	fmt.Println("\n📊 Teste de Chi-Squared para Avaliar Uniformidade (Ginga):")
 	const samples = 80000
 	byteCounts := make([]int, 256)
 
 	for i := 0; i < samples; i++ {
-		plain := make([]byte, whirlx.BlockSize)
+		plain := make([]byte, ginga.BlockSize)
 		rand.Read(plain)
-		cipher, _ := whirlx.Encrypt(plain, key)
+		cipher, _ := ginga.Encrypt(plain, key)
 
 		for _, b := range cipher {
 			byteCounts[b]++
 		}
 	}
 
-	expected := float64(whirlx.BlockSize*samples) / 256.0
+	expected := float64(ginga.BlockSize*samples) / 256.0
 	chiSquared := 0.0
 	for _, observed := range byteCounts {
 		diff := float64(observed) - expected
@@ -235,9 +235,9 @@ func testLinearCryptanalysis(key []byte) {
 	matches := 0
 
 	for i := 0; i < numTests; i++ {
-		p := make([]byte, whirlx.BlockSize)
+		p := make([]byte, ginga.BlockSize)
 		rand.Read(p)
-		c, err := whirlx.Encrypt(p, key)
+		c, err := ginga.Encrypt(p, key)
 		if err != nil {
 			continue
 		}
@@ -245,7 +245,7 @@ func testLinearCryptanalysis(key []byte) {
 		// Calcula a paridade dos bits selecionados pelas máscaras
 		pParity := 0
 		cParity := 0
-		for j := 0; j < whirlx.BlockSize; j++ {
+		for j := 0; j < ginga.BlockSize; j++ {
 			pParity ^= bits.OnesCount8(p[j]&maskPlain) & 1
 			cParity ^= bits.OnesCount8(c[j]&maskCipher) & 1
 		}
@@ -293,8 +293,8 @@ func testBoomerang(key []byte) {
 				copy(P2, P1)
 				P2[0] ^= deltaP // ΔP numa posição
 
-				C1, _ := whirlx.Encrypt(P1, key)
-				C2, _ := whirlx.Encrypt(P2, key)
+				C1, _ := ginga.Encrypt(P1, key)
+				C2, _ := ginga.Encrypt(P2, key)
 
 				C1p := make([]byte, 16)
 				C2p := make([]byte, 16)
@@ -303,8 +303,8 @@ func testBoomerang(key []byte) {
 				C1p[0] ^= deltaC // ΔC aplicada
 				C2p[0] ^= deltaC
 
-				D1, _ := whirlx.Decrypt(C1p, key)
-				D2, _ := whirlx.Decrypt(C2p, key)
+				D1, _ := ginga.Decrypt(C1p, key)
+				D2, _ := ginga.Decrypt(C2p, key)
 
 				// Checar se a diferença no output bate com deltaP
 				if D1[0]^D2[0] == deltaP {
@@ -327,17 +327,17 @@ func testBoomerang(key []byte) {
 func testKeySaturation() {
 	fmt.Println("\n🧊 Teste de Saturação da Chave:")
 	patterns := [][]byte{
-		bytes.Repeat([]byte{0x00}, 16),
-		bytes.Repeat([]byte{0xFF}, 16),
-		bytes.Repeat([]byte{0xAA}, 16),
-		bytes.Repeat([]byte{0x55}, 16),
+		bytes.Repeat([]byte{0x00}, 32),
+		bytes.Repeat([]byte{0xFF}, 32),
+		bytes.Repeat([]byte{0xAA}, 32),
+		bytes.Repeat([]byte{0x55}, 32),
 	}
 
 	plain := make([]byte, 16)
 	rand.Read(plain)
 
 	for _, key := range patterns {
-		cipher, _ := whirlx.Encrypt(plain, key)
+		cipher, _ := ginga.Encrypt(plain, key)
 		fmt.Printf("Key: %x → Cipher: %x\n", key, cipher)
 	}
 }
@@ -345,7 +345,7 @@ func testKeySaturation() {
 func testRepetitivePlaintext(key []byte) {
 	fmt.Println("\n🔁 Teste com Plaintext Repetitivo:")
 	plain := bytes.Repeat([]byte{0x41}, 16) // "AAAAAAAAAAAAAAAA"
-	cipher, _ := whirlx.Encrypt(plain, key)
+	cipher, _ := ginga.Encrypt(plain, key)
 	fmt.Printf("Plain: %x → Cipher: %x\n", plain, cipher)
 }
 
@@ -353,7 +353,7 @@ func testTripleByteDifference(key []byte) {
 	fmt.Println("\n⚠️ Teste com 3 Bytes Diferentes:")
 	plain := make([]byte, 16)
 	rand.Read(plain)
-	original, _ := whirlx.Encrypt(plain, key)
+	original, _ := ginga.Encrypt(plain, key)
 
 	mod := make([]byte, 16)
 	copy(mod, plain)
@@ -361,7 +361,7 @@ func testTripleByteDifference(key []byte) {
 	mod[5] ^= 0xFF
 	mod[10] ^= 0xFF
 
-	modCipher, _ := whirlx.Encrypt(mod, key)
+	modCipher, _ := ginga.Encrypt(mod, key)
 	diff := bitDiff(original, modCipher)
 	fmt.Printf("Alterando 3 bytes → Diferença: %d bits (%.2f%%)\n", diff, 100*float64(diff)/128.0)
 }
@@ -374,7 +374,7 @@ func testTimingVariance(key []byte) {
 		plain := make([]byte, 16)
 		rand.Read(plain)
 		start := time.Now()
-		whirlx.Encrypt(plain, key)
+		ginga.Encrypt(plain, key)
 		times = append(times, time.Since(start))
 	}
 
@@ -417,16 +417,16 @@ func testTimingVariance(key []byte) {
 // --- MAIN ---
 
 func main() {
-	key, _ := hex.DecodeString("0123456789abcdeffedcba9876543210") // 16 bytes (WhirlX-128)
-	plain := []byte("Shmon CipherTest")                            // 16 bytes (128 bits)
+	key, _ := hex.DecodeString("0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210") // 32 bytes (Ginga-256)
+	plain := []byte("Ginga CipherTest")                            // 16 bytes (128 bits)
 
 	fmt.Printf("🔐 Key:        %x\n", key)
 	fmt.Printf("📥 Plaintext:  %s\n", plain)
 
-	cipher, _ := whirlx.Encrypt(plain, key)
+	cipher, _ := ginga.Encrypt(plain, key)
 	fmt.Printf("🔒 Ciphertext: %x\n", cipher)
 
-	decrypted, _ := whirlx.Decrypt(cipher, key)
+	decrypted, _ := ginga.Decrypt(cipher, key)
 	fmt.Printf("🔓 Decrypted:  %s\n", decrypted)
 
 	//	testAvalancheKey(plain, key)

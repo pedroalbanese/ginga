@@ -1,4 +1,4 @@
-package whirlx
+package ginga
 
 import (
 	"crypto/cipher"
@@ -73,10 +73,10 @@ func invMixState32(state *[4]uint32) {
 
 func Encrypt(plain, key []byte) ([]byte, error) {
 	if len(plain) != BlockSize {
-		return nil, errors.New("whirlx: plaintext must be 16 bytes")
+		return nil, errors.New("ginga: plaintext must be 16 bytes")
 	}
 	if len(key) != 32 {
-		return nil, errors.New("whirlx: key must be 32 bytes (256 bits)")
+		return nil, errors.New("ginga: key must be 32 bytes (256 bits)")
 	}
 
 	var c [4]uint32
@@ -106,10 +106,10 @@ func Encrypt(plain, key []byte) ([]byte, error) {
 
 func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	if len(ciphertext) != BlockSize {
-		return nil, errors.New("whirlx: ciphertext must be 16 bytes")
+		return nil, errors.New("ginga: ciphertext must be 16 bytes")
 	}
 	if len(key) != 32 {
-		return nil, errors.New("whirlx: key must be 32 bytes (256 bits)")
+		return nil, errors.New("ginga: key must be 32 bytes (256 bits)")
 	}
 
 	var p [4]uint32
@@ -146,7 +146,7 @@ type gingaCipher struct {
 // NewCipher cria um objeto cipher.Block compatível com modos de operação
 func NewCipher(key []byte) (cipher.Block, error) {
 	if len(key) != 32 {
-		return nil, errors.New("whirlx: invalid key size (must be 32 bytes)")
+		return nil, errors.New("ginga: invalid key size (must be 32 bytes)")
 	}
 	return &gingaCipher{key: append([]byte(nil), key...)}, nil
 }
@@ -159,11 +159,11 @@ func (c *gingaCipher) BlockSize() int {
 // Encrypt cifra exatamente um bloco de 16 bytes
 func (c *gingaCipher) Encrypt(dst, src []byte) {
 	if len(src) < BlockSize || len(dst) < BlockSize {
-		panic("whirlx: input not full block")
+		panic("ginga: input not full block")
 	}
 	out, err := Encrypt(src[:BlockSize], c.key)
 	if err != nil {
-		panic("whirlx: encryption failed: " + err.Error())
+		panic("ginga: encryption failed: " + err.Error())
 	}
 	copy(dst, out)
 }
@@ -171,11 +171,11 @@ func (c *gingaCipher) Encrypt(dst, src []byte) {
 // Decrypt decifra exatamente um bloco de 16 bytes
 func (c *gingaCipher) Decrypt(dst, src []byte) {
 	if len(src) < BlockSize || len(dst) < BlockSize {
-		panic("whirlx: input not full block")
+		panic("ginga: input not full block")
 	}
 	out, err := Decrypt(src[:BlockSize], c.key)
 	if err != nil {
-		panic("whirlx: decryption failed: " + err.Error())
+		panic("ginga: decryption failed: " + err.Error())
 	}
 	copy(dst, out)
 }

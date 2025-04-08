@@ -1,4 +1,4 @@
-package whirlx
+package ginga
 
 import (
 	"encoding/binary"
@@ -19,7 +19,7 @@ type whirlxHash struct {
 }
 
 func New() hash.Hash {
-	return &whirlxHash{
+	return &gingaHash{
 		state: [8]uint32{
 			0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBAADF00D,
 			0x8BADF00D, 0x1337C0DE, 0x0BADC0DE, 0xFACEB00C,
@@ -29,7 +29,7 @@ func New() hash.Hash {
 	}
 }
 
-func (h *whirlxHash) Write(p []byte) (n int, err error) {
+func (h *gingaHash) Write(p []byte) (n int, err error) {
 	h.buf = append(h.buf, p...)
 	h.len += uint64(len(p))
 
@@ -40,7 +40,7 @@ func (h *whirlxHash) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (h *whirlxHash) Sum(b []byte) []byte {
+func (h *gingaHash) Sum(b []byte) []byte {
 	tmp := make([]byte, len(h.buf))
 	copy(tmp, h.buf)
 
@@ -66,7 +66,7 @@ func (h *whirlxHash) Sum(b []byte) []byte {
 	return append(b, out...)
 }
 
-func (h *whirlxHash) Reset() {
+func (h *gingaHash) Reset() {
 	h.state = [8]uint32{
 		0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBAADF00D,
 		0x8BADF00D, 0x1337C0DE, 0x0BADC0DE, 0xFACEB00C,
@@ -75,10 +75,10 @@ func (h *whirlxHash) Reset() {
 	h.len = 0
 }
 
-func (h *whirlxHash) Size() int      { return DigestSize }
-func (h *whirlxHash) BlockSize() int { return BlockSize }
+func (h *gingaHash) Size() int      { return DigestSize }
+func (h *gingaHash) BlockSize() int { return BlockSize }
 
-func (h *whirlxHash) processBlock(block []byte) {
+func (h *gingaHash) processBlock(block []byte) {
 	var m [4]uint32
 	for i := 0; i < 4; i++ {
 		m[i] = binary.LittleEndian.Uint32(block[i*4 : (i+1)*4])
@@ -89,7 +89,6 @@ func (h *whirlxHash) processBlock(block []byte) {
 	// faz a compressão com os rounds
 	for r := 0; r < internalRounds; r++ {
 		for i := 0; i < 8; i++ {
-//			k := subKey32(&m, r, i%4)
 			k := subKey32(&m, r, i&3)
 			h.state[i] = round32(h.state[i], k, r)
 		}
@@ -98,7 +97,6 @@ func (h *whirlxHash) processBlock(block []byte) {
 
 	// aplica Miyaguchi-Preneel: H = f(H, M) ⊕ M ⊕ H
 	for i := 0; i < 8; i++ {
-//		h.state[i] ^= m[i%4] ^ prev[i]
 		h.state[i] ^= m[i&3] ^ prev[i]
 	}
 }
@@ -126,14 +124,12 @@ func round32(x, k uint32, r int) uint32 {
 }
 
 func subKey32(k *[4]uint32, round, i int) uint32 {
-//	base := k[(i+round)%4]
 	base := k[(i+round)&3]
 	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
 }
 
 func mixState256(state *[8]uint32) {
 	for i := 0; i < 8; i++ {
-//		state[i] ^= rotl32(state[(i+1)%8], (5*i+11)%32)
 		state[i] ^= rotl32(state[(i+1)&7], (5*i+11)&31)
 	}
 }

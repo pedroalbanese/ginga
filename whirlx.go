@@ -73,10 +73,10 @@ func invMixState32(state *[4]uint32) {
 
 func Encrypt(plain, key []byte) ([]byte, error) {
 	if len(plain) != BlockSize {
-		return nil, errors.New("whirlx: invalid plaintext size (must be 16 bytes)")
+		return nil, errors.New("whirlx: plaintext must be 16 bytes")
 	}
-	if len(key) != 16 && len(key) != 32 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
+	if len(key) != 32 {
+		return nil, errors.New("whirlx: key must be 32 bytes (256 bits)")
 	}
 
 	var c [4]uint32
@@ -84,14 +84,14 @@ func Encrypt(plain, key []byte) ([]byte, error) {
 		c[i] = binary.LittleEndian.Uint32(plain[i*4 : (i+1)*4])
 	}
 
-	var k [4]uint32
-	for i := 0; i < 4; i++ {
+	var k [8]uint32
+	for i := 0; i < 8; i++ {
 		k[i] = binary.LittleEndian.Uint32(key[i*4 : (i+1)*4])
 	}
 
 	for r := 0; r < Rounds; r++ {
 		for i := 0; i < 4; i++ {
-			subk := subKey32(k[:], r, i)
+			subk := subKey32(&k, r, i)
 			c[i] = round32(c[i], subk, r)
 		}
 		mixState32(&c)
@@ -106,10 +106,10 @@ func Encrypt(plain, key []byte) ([]byte, error) {
 
 func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	if len(ciphertext) != BlockSize {
-		return nil, errors.New("whirlx: invalid ciphertext size (must be 16 bytes)")
+		return nil, errors.New("whirlx: ciphertext must be 16 bytes")
 	}
-	if len(key) != 16 && len(key) != 32 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
+	if len(key) != 32 {
+		return nil, errors.New("whirlx: key must be 32 bytes (256 bits)")
 	}
 
 	var p [4]uint32
@@ -117,15 +117,15 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 		p[i] = binary.LittleEndian.Uint32(ciphertext[i*4 : (i+1)*4])
 	}
 
-	var k [4]uint32
-	for i := 0; i < 4; i++ {
+	var k [8]uint32
+	for i := 0; i < 8; i++ {
 		k[i] = binary.LittleEndian.Uint32(key[i*4 : (i+1)*4])
 	}
 
 	for r := Rounds - 1; r >= 0; r-- {
 		invMixState32(&p)
 		for i := 0; i < 4; i++ {
-			subk := subKey32(k[:], r, i)
+			subk := subKey32(&k, r, i)
 			p[i] = invRound32(p[i], subk, r)
 		}
 	}

@@ -12,151 +12,128 @@ const Rounds = 16
 
 // --- Funções auxiliares ARX ---
 
-func add(x, y byte) byte      { return x + y }
-func sub(x, y byte) byte      { return x - y }
-func rotl(x byte, n int) byte { return bits.RotateLeft8(x, n) }
-func rotr(x byte, n int) byte { return bits.RotateLeft8(x, -n) }
+func add32(x, y uint32) uint32      { return x + y }
+func sub32(x, y uint32) uint32      { return x - y }
+func rotl32(x uint32, n int) uint32 { return bits.RotateLeft32(x, n) }
+func rotr32(x uint32, n int) uint32 { return bits.RotateLeft32(x, -n) }
 
-// func confuse(x byte) byte   { return rotl(x^0xA5, 3) }
-// func deconfuse(x byte) byte { return rotr(x, 3) ^ 0xA5 }
-
-func confuse(x byte) byte {
-	x ^= 0xA5        // 1. XOR
-	x = add(x, 0x3C) // 2. ADD
-	x = rotl(x, 3)   // 3. ROTATE LEFT
+func confuse32(x uint32) uint32 {
+	x ^= 0xA5A5A5A5  // 1. XOR
+	x += 0x3C3C3C3C  // 2. ADD
+	x = rotl32(x, 7) // 3. ROTATE LEFT
 	return x
 }
 
-func deconfuse(x byte) byte {
-	x = rotr(x, 3)   // 1. ROTATE RIGHT (inverse of rotl)
-	x = sub(x, 0x3C) // 2. SUB (inverse of add)
-	x ^= 0xA5        // 3. XOR (same as XOR inverse)
+func deconfuse32(x uint32) uint32 {
+	x = rotr32(x, 7) // 1. ROTATE RIGHT (inverse of rotl)
+	x -= 0x3C3C3C3C  // 2. SUB (inverse of add)
+	x ^= 0xA5A5A5A5  // 3. XOR (same as XOR inverse)
 	return x
 }
 
-func confuseN(x byte, n int) byte {
-	for i := 0; i < n; i++ {
-		x = confuse(x)
-	}
-	return x
-}
-
-func deconfuseN(x byte, n int) byte {
-	for i := 0; i < n; i++ {
-		x = deconfuse(x)
-	}
-	return x
-}
-
-/*
-func mixState(state []byte) {
-	for i := 0; i < len(state); i++ {
-		state[i] = rotl(state[i]^state[(i+1)%len(state)], 3)
-	}
-}
-
-func invMixState(state []byte) {
-	for i := len(state) - 1; i >= 0; i-- {
-		state[i] = rotr(state[i], 3) ^ state[(i+1)%len(state)]
-	}
-}
-*/
-
-func mixState(state *[16]byte) {
-	for i := 0; i < 16; i++ {
-		state[i] = rotl(state[i]^state[(i+1)&15], 3)
-	}
-}
-
-func invMixState(state *[16]byte) {
-	for i := 15; i >= 0; i-- {
-		state[i] = rotr(state[i], 3) ^ state[(i+1)&15]
-	}
-}
-
-func round(x, k byte, r int) byte {
-	x = add(x, k)
-	x = confuseN(x, 4) // mais confusão!
-//	x = rotl(x, (r+3)%8)
-	x = rotl(x, (r+3)&7)
+func round32(x, k uint32, r int) uint32 {
+	x = add32(x, k)
+	x = confuse32(x)
+	x = rotl32(x, (r+3)&31)
 	x ^= k
-//	x = rotl(x, (r+5)%8)
-	x = rotl(x, (r+5)&7)
+	x = rotl32(x, (r+5)&31)
 	return x
 }
 
-func invRound(x, k byte, r int) byte {
-//	x = rotr(x, (r+5)%8)
-	x = rotr(x, (r+5)&7)
+func invRound32(x, k uint32, r int) uint32 {
+	x = rotr32(x, (r+5)&31)
 	x ^= k
-//	x = rotr(x, (r+3)%8)
-	x = rotr(x, (r+3)&7)
-	x = deconfuseN(x, 4)
-	x = sub(x, k)
+	x = rotr32(x, (r+3)&31)
+	x = deconfuse32(x)
+	x = sub32(x, k)
 	return x
 }
 
-func subKey(k []byte, round, i int) byte {
-//	base := k[(i+round)%len(k)]
-	base := k[(i+round)&15] // se len(k) == 32
-//	base = rotl(base^byte(i*73+round*91), (round+i)%8)
-	base = rotl(base^byte(i*73+round*91), (round+i)&7)
-	return base
+func subKey32(k []uint32, round, i int) uint32 {
+	base := k[(i+round)%len(k)]
+	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
 }
 
-// --- Funções principais de cifra ---
+func mixState32(state *[4]uint32) {
+	state[0] ^= rotl32(state[1], 5)
+	state[1] ^= rotl32(state[2], 11)
+	state[2] ^= rotl32(state[3], 17)
+	state[3] ^= rotl32(state[0], 23)
+}
 
-// Encrypt cifra um bloco de 16 bytes com uma chave de 16 ou 32 bytes
+func invMixState32(state *[4]uint32) {
+	state[3] ^= rotl32(state[0], 23)
+	state[2] ^= rotl32(state[3], 17)
+	state[1] ^= rotl32(state[2], 11)
+	state[0] ^= rotl32(state[1], 5)
+}
+
+// --- Encrypt/Decrypt ---
+
 func Encrypt(plain, key []byte) ([]byte, error) {
 	if len(plain) != BlockSize {
 		return nil, errors.New("whirlx: invalid plaintext size (must be 16 bytes)")
 	}
-	if len(key) != 16 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 bytes)")
+	if len(key) != 16 && len(key) != 32 {
+		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
 	}
 
-//	c := make([]byte, BlockSize)
-//	copy(c, plain)
+	var c [4]uint32
+	for i := 0; i < 4; i++ {
+		c[i] = binary.LittleEndian.Uint32(plain[i*4 : (i+1)*4])
+	}
 
-	var c [16]byte
-	copy(c[:], plain)
-	
+	var k [4]uint32
+	for i := 0; i < 4; i++ {
+		k[i] = binary.LittleEndian.Uint32(key[i*4 : (i+1)*4])
+	}
+
 	for r := 0; r < Rounds; r++ {
-		for i := range c {
-			k := subKey(key, r, i)
-			c[i] = round(c[i], k, r)
+		for i := 0; i < 4; i++ {
+			subk := subKey32(k[:], r, i)
+			c[i] = round32(c[i], subk, r)
 		}
-//		mixState(c)
-		mixState(&c)
+		mixState32(&c)
 	}
-//	return c, nil
-	return c[:], nil
+
+	out := make([]byte, BlockSize)
+	for i := 0; i < 4; i++ {
+		binary.LittleEndian.PutUint32(out[i*4:(i+1)*4], c[i])
+	}
+	return out, nil
 }
 
-// Decrypt reverte o bloco cifrado usando a chave
 func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	if len(ciphertext) != BlockSize {
-		return nil, errors.New("whirlx: invalid cipher size (must be 16 bytes)")
+		return nil, errors.New("whirlx: invalid ciphertext size (must be 16 bytes)")
 	}
-	if len(key) != 16 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 bytes)")
+	if len(key) != 16 && len(key) != 32 {
+		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
 	}
 
-//	p := make([]byte, BlockSize)
-//	copy(p, ciphertext)
+	var p [4]uint32
+	for i := 0; i < 4; i++ {
+		p[i] = binary.LittleEndian.Uint32(ciphertext[i*4 : (i+1)*4])
+	}
 
-	var p [16]byte
-	copy(p[:], ciphertext)
-	
+	var k [4]uint32
+	for i := 0; i < 4; i++ {
+		k[i] = binary.LittleEndian.Uint32(key[i*4 : (i+1)*4])
+	}
+
 	for r := Rounds - 1; r >= 0; r-- {
-		invMixState(&p)
-		for i := range p {
-			k := subKey(key, r, i)
-			p[i] = invRound(p[i], k, r)
+		invMixState32(&p)
+		for i := 0; i < 4; i++ {
+			subk := subKey32(k[:], r, i)
+			p[i] = invRound32(p[i], subk, r)
 		}
 	}
-//	return p, nil
-	return p[:], nil
+
+	out := make([]byte, BlockSize)
+	for i := 0; i < 4; i++ {
+		binary.LittleEndian.PutUint32(out[i*4:(i+1)*4], p[i])
+	}
+	return out, nil
 }
 
 // --- Integração com cipher.Block (NewCipher) ---
@@ -167,8 +144,8 @@ type whirlxCipher struct {
 
 // NewCipher cria um objeto cipher.Block compatível com modos de operação
 func NewCipher(key []byte) (cipher.Block, error) {
-	if len(key) != 16 {
-		return nil, errors.New("whirlx: invalid key size (must be 16 bytes)")
+	if len(key) != 16 && len(key) != 32 {
+		return nil, errors.New("whirlx: invalid key size (must be 16 or 32 bytes)")
 	}
 	return &whirlxCipher{key: append([]byte(nil), key...)}, nil
 }

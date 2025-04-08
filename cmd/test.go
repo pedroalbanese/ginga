@@ -1,44 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"math"
 	"math/bits"
+	"time"
+	"sort"
 
 	"github.com/pedroalbanese/whirlx"
 )
-
-// --- WhirlX Helper ---
-
-func EncryptWhirlX(plain, key []byte) ([]byte, error) {
-	if len(plain) != whirlx.BlockSize {
-		return nil, fmt.Errorf("WhirlX: plaintext deve ter %d bytes", whirlx.BlockSize)
-	}
-
-	block, err := whirlx.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	ciphertext := make([]byte, whirlx.BlockSize)
-	block.Encrypt(ciphertext, plain)
-
-	return ciphertext, nil
-}
-
-func DecryptWhirlX(ciphertext, key []byte) ([]byte, error) {
-	block, err := whirlx.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	plain := make([]byte, whirlx.BlockSize)
-	block.Decrypt(plain, ciphertext)
-
-	return plain, nil
-}
 
 // --- Utils ---
 
@@ -54,14 +27,14 @@ func bitDiff(a, b []byte) int {
 
 func testAvalancheKey(plain, key []byte) {
 	fmt.Println("\n🌪 Avalanche na Chave (WhirlX):")
-	original, _ := EncryptWhirlX(plain, key)
+	original, _ := whirlx.Encrypt(plain, key)
 
 	for i := 0; i < len(key)*8; i++ {
 		modKey := make([]byte, len(key))
 		copy(modKey, key)
 		modKey[i/8] ^= 1 << (i % 8)
 
-		modCipher, _ := EncryptWhirlX(plain, modKey)
+		modCipher, _ := whirlx.Encrypt(plain, modKey)
 		diff := bitDiff(original, modCipher)
 		fmt.Printf("Bit %3d modificado → Diferença: %3d bits (%.2f%%)\n", i, diff, 100*float64(diff)/128.0)
 	}
@@ -69,21 +42,21 @@ func testAvalancheKey(plain, key []byte) {
 
 func testAvalanchePlain(plain, key []byte) {
 	fmt.Println("\n🌊 Avalanche no Plaintext (WhirlX):")
-	original, _ := EncryptWhirlX(plain, key)
+	original, _ := whirlx.Encrypt(plain, key)
 
 	for i := 0; i < len(plain)*8; i++ {
 		modPlain := make([]byte, len(plain))
 		copy(modPlain, plain)
 		modPlain[i/8] ^= 1 << (i % 8)
 
-		modCipher, _ := EncryptWhirlX(modPlain, key)
+		modCipher, _ := whirlx.Encrypt(modPlain, key)
 		diff := bitDiff(original, modCipher)
 		fmt.Printf("Bit %3d modificado → Diferença: %3d bits (%.2f%%)\n", i, diff, 100*float64(diff)/128.0)
 	}
 }
 
 func testGlobalAvalanchePlain(plain, key []byte) {
-	original, _ := EncryptWhirlX(plain, key)
+	original, _ := whirlx.Encrypt(plain, key)
 	fmt.Println("\n🌪 Teste Global de Avalanche no Plaintext (vários vetores):")
 
 	const numTests = 1000
@@ -95,7 +68,7 @@ func testGlobalAvalanchePlain(plain, key []byte) {
 	for t := 0; t < numTests; t++ {
 		plain := make([]byte, inputLen)
 		rand.Read(plain)
-		original, _ := EncryptWhirlX(plain, key)
+		original, _ := whirlx.Encrypt(plain, key)
 
 		for i := 0; i < totalBits; i++ {
 			modPlain := make([]byte, inputLen)
@@ -103,7 +76,7 @@ func testGlobalAvalanchePlain(plain, key []byte) {
 
 			modPlain[i/8] ^= 1 << (i % 8)
 
-			modCipher, _ := EncryptWhirlX(modPlain, key)
+			modCipher, _ := whirlx.Encrypt(modPlain, key)
 			diff := bitDiff(original, modCipher)
 			diffs = append(diffs, diff)
 		}
@@ -137,6 +110,7 @@ func testGlobalAvalanchePlain(plain, key []byte) {
 }
 
 func testDifferentialResistance(plain, key []byte) {
+	fmt.Println("\n🔁 Resistência Diferencial (WhirlX):")
 	original, _ := whirlx.Encrypt(plain, key)
 	mod := make([]byte, len(plain))
 	copy(mod, plain)
@@ -144,9 +118,24 @@ func testDifferentialResistance(plain, key []byte) {
 
 	altered, _ := whirlx.Encrypt(mod, key)
 	diff := bitDiff(original, altered)
+	fmt.Printf("Alterando último byte → Diferença: %d bits (%.2f%%)\n", diff, 100*float64(diff)/128.0)
+}
 
-	fmt.Println("\n🔁 Teste de Resistência Diferencial (último byte flip):")
-	fmt.Printf("Diferença entre ciphers: %d bits (%.2f%%)\n", diff, 100*float64(diff)/128.0)
+func testBitDistribution(key []byte) {
+	fmt.Println("\n📊 Teste de Distribuição de Bits na Saída:")
+	totalBits, ones := 0, 0
+
+	for i := 0; i < 10000; i++ {
+		plain := make([]byte, 16)
+		rand.Read(plain)
+
+		c, _ := whirlx.Encrypt(plain, key)
+		for _, b := range c {
+			ones += bits.OnesCount8(b)
+			totalBits += 8
+		}
+	}
+	fmt.Printf("Bits '1' na saída: %d / %d (%.2f%%)\n", ones, totalBits, 100*float64(ones)/float64(totalBits))
 }
 
 func testInversibility(key []byte) {
@@ -155,7 +144,7 @@ func testInversibility(key []byte) {
 		plain := make([]byte, whirlx.BlockSize)
 		rand.Read(plain)
 
-		cipher, _ := EncryptWhirlX(plain, key)
+		cipher, _ := whirlx.Encrypt(plain, key)
 		if len(cipher) != whirlx.BlockSize {
 			fmt.Println("❌ Erro no tamanho do ciphertext!")
 			return
@@ -172,7 +161,7 @@ func testByteUniformity(key []byte) {
 	for i := 0; i < samples; i++ {
 		plain := make([]byte, whirlx.BlockSize)
 		rand.Read(plain)
-		c, _ := EncryptWhirlX(plain, key)
+		c, _ := whirlx.Encrypt(plain, key)
 
 		for _, b := range c {
 			counts[b]++
@@ -194,14 +183,14 @@ func testDiffusion(key []byte) {
 	fmt.Println("\n🌐 Teste de Difusão (WhirlX):")
 	base := make([]byte, whirlx.BlockSize)
 	rand.Read(base)
-	original, _ := EncryptWhirlX(base, key)
+	original, _ := whirlx.Encrypt(base, key)
 
 	for i := 0; i < len(base); i++ {
 		mod := make([]byte, len(base))
 		copy(mod, base)
 		mod[i] ^= 0xFF
 
-		modCipher, _ := EncryptWhirlX(mod, key)
+		modCipher, _ := whirlx.Encrypt(mod, key)
 		byteDiff := 0
 		for j := range modCipher {
 			if modCipher[j] != original[j] {
@@ -220,7 +209,7 @@ func testChiSquared(key []byte) {
 	for i := 0; i < samples; i++ {
 		plain := make([]byte, whirlx.BlockSize)
 		rand.Read(plain)
-		cipher, _ := EncryptWhirlX(plain, key)
+		cipher, _ := whirlx.Encrypt(plain, key)
 
 		for _, b := range cipher {
 			byteCounts[b]++
@@ -237,6 +226,194 @@ func testChiSquared(key []byte) {
 	fmt.Printf("Valor do Teste Chi-Squared: %.2f\n", chiSquared)
 }
 
+// Teste de Criptoanálise Linear
+func testLinearCryptanalysis(key []byte) {
+	// Usando máscaras comuns: 0x55 (01010101) para o plaintext e 0xAA (10101010) para o ciphertext.
+	const numTests = 5000
+	maskPlain := byte(0x55)
+	maskCipher := byte(0xAA)
+	matches := 0
+
+	for i := 0; i < numTests; i++ {
+		p := make([]byte, whirlx.BlockSize)
+		rand.Read(p)
+		c, err := whirlx.Encrypt(p, key)
+		if err != nil {
+			continue
+		}
+
+		// Calcula a paridade dos bits selecionados pelas máscaras
+		pParity := 0
+		cParity := 0
+		for j := 0; j < whirlx.BlockSize; j++ {
+			pParity ^= bits.OnesCount8(p[j]&maskPlain) & 1
+			cParity ^= bits.OnesCount8(c[j]&maskCipher) & 1
+		}
+
+		if pParity == cParity {
+			matches++
+		}
+	}
+
+	ratio := float64(matches) / float64(numTests)
+	fmt.Println("\n📉 Teste de Criptoanálise Linear:")
+	fmt.Printf("Correlação observada: %.4f (ideal: 0.5)\n", ratio)
+}
+
+func testBoomerang(key []byte) {
+	fmt.Println("\n🪃 Teste Boomerang (melhorado):")
+	samples := 1000
+
+	//	deltas := []byte{0x01, 0x0F, 0x3C, 0xA5, 0xFF}
+	deltas := []byte{
+		0x01, // bit menos significativo
+		0x02, // bit próximo
+		0x08, // bit médio
+		0x10, // mudança de nibble
+		0x80, // bit mais significativo
+		0xC0, // bits altos
+		0xF0, // nibble alto
+		0x3C, // padrão alternado
+		0xA5, // padrão alternado invertido
+		0xFF, // todos os bits
+	}
+
+	bestCorr := 0.0
+	var bestDeltaP, bestDeltaC byte
+
+	for _, deltaP := range deltas {
+		for _, deltaC := range deltas {
+			matches := 0
+
+			for i := 0; i < samples; i++ {
+				P1 := make([]byte, 16)
+				rand.Read(P1)
+
+				P2 := make([]byte, 16)
+				copy(P2, P1)
+				P2[0] ^= deltaP // ΔP numa posição
+
+				C1, _ := whirlx.Encrypt(P1, key)
+				C2, _ := whirlx.Encrypt(P2, key)
+
+				C1p := make([]byte, 16)
+				C2p := make([]byte, 16)
+				copy(C1p, C1)
+				copy(C2p, C2)
+				C1p[0] ^= deltaC // ΔC aplicada
+				C2p[0] ^= deltaC
+
+				D1, _ := whirlx.Decrypt(C1p, key)
+				D2, _ := whirlx.Decrypt(C2p, key)
+
+				// Checar se a diferença no output bate com deltaP
+				if D1[0]^D2[0] == deltaP {
+					matches++
+				}
+			}
+
+			corr := float64(matches) / float64(samples)
+			if corr > bestCorr {
+				bestCorr = corr
+				bestDeltaP = deltaP
+				bestDeltaC = deltaC
+			}
+		}
+	}
+
+	fmt.Printf("🌟 Melhor ΔP: 0x%02X | ΔC: 0x%02X → Correlação: %.5f\n", bestDeltaP, bestDeltaC, bestCorr)
+}
+
+func testKeySaturation() {
+	fmt.Println("\n🧊 Teste de Saturação da Chave:")
+	patterns := [][]byte{
+		bytes.Repeat([]byte{0x00}, 16),
+		bytes.Repeat([]byte{0xFF}, 16),
+		bytes.Repeat([]byte{0xAA}, 16),
+		bytes.Repeat([]byte{0x55}, 16),
+	}
+
+	plain := make([]byte, 16)
+	rand.Read(plain)
+
+	for _, key := range patterns {
+		cipher, _ := whirlx.Encrypt(plain, key)
+		fmt.Printf("Key: %x → Cipher: %x\n", key, cipher)
+	}
+}
+
+func testRepetitivePlaintext(key []byte) {
+	fmt.Println("\n🔁 Teste com Plaintext Repetitivo:")
+	plain := bytes.Repeat([]byte{0x41}, 16) // "AAAAAAAAAAAAAAAA"
+	cipher, _ := whirlx.Encrypt(plain, key)
+	fmt.Printf("Plain: %x → Cipher: %x\n", plain, cipher)
+}
+
+func testTripleByteDifference(key []byte) {
+	fmt.Println("\n⚠️ Teste com 3 Bytes Diferentes:")
+	plain := make([]byte, 16)
+	rand.Read(plain)
+	original, _ := whirlx.Encrypt(plain, key)
+
+	mod := make([]byte, 16)
+	copy(mod, plain)
+	mod[0] ^= 0xFF
+	mod[5] ^= 0xFF
+	mod[10] ^= 0xFF
+
+	modCipher, _ := whirlx.Encrypt(mod, key)
+	diff := bitDiff(original, modCipher)
+	fmt.Printf("Alterando 3 bytes → Diferença: %d bits (%.2f%%)\n", diff, 100*float64(diff)/128.0)
+}
+
+func testTimingVariance(key []byte) {
+	fmt.Println("\n⏱ Teste de Variação de Tempo:")
+	times := []time.Duration{}
+
+	for i := 0; i < 1000; i++ {
+		plain := make([]byte, 16)
+		rand.Read(plain)
+		start := time.Now()
+		whirlx.Encrypt(plain, key)
+		times = append(times, time.Since(start))
+	}
+
+	// Ordena os tempos pra cortar o top 1%
+	sort.Slice(times, func(i, j int) bool {
+		return times[i] < times[j]
+	})
+	cutoff := int(float64(len(times)) * 0.99) // 99% dos tempos
+	filtered := times[:cutoff]
+
+	var total time.Duration
+	min, max := filtered[0], filtered[0]
+	for _, t := range filtered {
+		total += t
+		if t < min {
+			min = t
+		}
+		if t > max {
+			max = t
+		}
+	}
+	avg := total / time.Duration(len(filtered))
+
+	// Cálculo do desvio padrão
+	var sumSquares float64
+	for _, t := range filtered {
+		diff := float64(t - avg)
+		sumSquares += diff * diff
+	}
+	stdDev := time.Duration(math.Sqrt(sumSquares / float64(len(filtered))))
+
+	fmt.Printf("Tempo médio: %v | Min: %v | Max (sem outliers): %v | Desvio padrão: ±%v\n", avg, min, max, stdDev)
+
+	// Exibe os outliers
+	for i := cutoff; i < len(times); i++ {
+		fmt.Printf("⚠️  Outlier detectado: %v\n", times[i])
+	}
+}
+
 // --- MAIN ---
 
 func main() {
@@ -246,15 +423,24 @@ func main() {
 	fmt.Printf("🔐 Key:        %x\n", key)
 	fmt.Printf("📥 Plaintext:  %s\n", plain)
 
-	cipher, _ := EncryptWhirlX(plain, key)
+	cipher, _ := whirlx.Encrypt(plain, key)
 	fmt.Printf("🔒 Ciphertext: %x\n", cipher)
+
+	decrypted, _ := whirlx.Decrypt(cipher, key)
+	fmt.Printf("🔓 Decrypted:  %s\n", decrypted)
 
 	//	testAvalancheKey(plain, key)
 	//	testAvalanchePlain(plain, key)
 	testGlobalAvalanchePlain(plain, key)
 	testChiSquared(key)
+	testBitDistribution(key)
 	testDifferentialResistance(plain, key)
 	testInversibility(key)
 	testByteUniformity(key)
 	testDiffusion(key)
+	testLinearCryptanalysis(key)
+	testBoomerang(key)
+	testKeySaturation()
+	testRepetitivePlaintext(key)
+	testTimingVariance(key)
 }

@@ -2,7 +2,6 @@ package whirlx
 
 import (
 	"encoding/binary"
-	"fmt"
 	"hash"
 	"math/bits"
 )

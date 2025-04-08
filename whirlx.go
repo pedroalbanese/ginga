@@ -2,6 +2,7 @@ package whirlx
 
 import (
 	"crypto/cipher"
+	"encoding/binary"
 	"errors"
 	"math/bits"
 )

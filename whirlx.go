@@ -51,7 +51,7 @@ func invRound32(x, k uint32, r int) uint32 {
 }
 
 func subKey32(k []uint32, round, i int) uint32 {
-	base := k[(i+round)%len(k)]
+	base := k[(i+round)&7]
 	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
 }
 

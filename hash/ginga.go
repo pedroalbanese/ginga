@@ -127,17 +127,6 @@ func round32(x, k uint32, r int) uint32 {
 	return x
 }
 
-func subKey32(k *[8]uint32, round, i int) uint32 {
-	base := k[(i+round)&7]
-	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
-}
-
-func mixState512(state *[16]uint32) {
-	for i := 0; i < 16; i++ {
-		state[i] ^= rotl32(state[(i+3)&15], (7*i+13)&31)
-	}
-}
-
 // ARX primitives
 
 func rotl32(x uint32, n int) uint32 {
@@ -160,13 +149,14 @@ func round32(x, k uint32, r int) uint32 {
 	return x
 }
 
-func subKey32(k *[4]uint32, round, i int) uint32 {
-	base := k[(i+round)&3]
+
+func subKey32(k *[8]uint32, round, i int) uint32 {
+	base := k[(i+round)&7]
 	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
 }
 
-func mixState256(state *[8]uint32) {
-	for i := 0; i < 8; i++ {
-		state[i] ^= rotl32(state[(i+1)&7], (5*i+11)&31)
+func mixState512(state *[16]uint32) {
+	for i := 0; i < 16; i++ {
+		state[i] ^= rotl32(state[(i+3)&15], (7*i+13)&31)
 	}
 }

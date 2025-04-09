@@ -7,29 +7,31 @@ import (
 )
 
 const (
-	BlockSize      = 16
+	BlockSize      = 32
 	DigestSize     = 32
-	internalRounds = 8
+	internalRounds = 10
 )
 
-type gingaHash struct {
-	state [8]uint32
+type whirlxHash struct {
+	state [16]uint32
 	buf   []byte
 	len   uint64
 }
 
 func New() hash.Hash {
-	return &gingaHash{
-		state: [8]uint32{
+	return &whirlxHash{
+		state: [16]uint32{
 			0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBAADF00D,
 			0x8BADF00D, 0x1337C0DE, 0x0BADC0DE, 0xFACEB00C,
+			0x0D15EA5E, 0xC001D00D, 0xABADBABE, 0xDEADC0DE,
+			0xFEEDBEEF, 0xBAD22222, 0xDEAD10CC, 0xCAFED00D,
 		},
 		buf: make([]byte, 0, BlockSize),
 		len: 0,
 	}
 }
 
-func (h *gingaHash) Write(p []byte) (n int, err error) {
+func (h *whirlxHash) Write(p []byte) (n int, err error) {
 	h.buf = append(h.buf, p...)
 	h.len += uint64(len(p))
 
@@ -40,7 +42,7 @@ func (h *gingaHash) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (h *gingaHash) Sum(b []byte) []byte {
+func (h *whirlxHash) Sum(b []byte) []byte {
 	tmp := make([]byte, len(h.buf))
 	copy(tmp, h.buf)
 
@@ -66,38 +68,73 @@ func (h *gingaHash) Sum(b []byte) []byte {
 	return append(b, out...)
 }
 
-func (h *gingaHash) Reset() {
-	h.state = [8]uint32{
+func (h *whirlxHash) Reset() {
+	h.state = [16]uint32{
 		0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBAADF00D,
 		0x8BADF00D, 0x1337C0DE, 0x0BADC0DE, 0xFACEB00C,
+		0x0D15EA5E, 0xC001D00D, 0xABADBABE, 0xDEADC0DE,
+		0xFEEDBEEF, 0xBAD22222, 0xDEAD10CC, 0xCAFED00D,
 	}
 	h.buf = h.buf[:0]
 	h.len = 0
 }
 
-func (h *gingaHash) Size() int      { return DigestSize }
-func (h *gingaHash) BlockSize() int { return BlockSize }
+func (h *whirlxHash) Size() int      { return DigestSize }
+func (h *whirlxHash) BlockSize() int { return BlockSize }
 
-func (h *gingaHash) processBlock(block []byte) {
-	var m [4]uint32
-	for i := 0; i < 4; i++ {
+func (h *whirlxHash) processBlock(block []byte) {
+	var m [8]uint32 // bloco com 8 palavras de 32 bits
+	for i := 0; i < 8; i++ {
 		m[i] = binary.LittleEndian.Uint32(block[i*4 : (i+1)*4])
 	}
 
-	prev := h.state // salva estado anterior
+	prev := h.state // salva o estado anterior
 
-	// faz a compressão com os rounds
+	// compressão com mais estado
 	for r := 0; r < internalRounds; r++ {
-		for i := 0; i < 8; i++ {
-			k := subKey32(&m, r, i&3)
+		for i := 0; i < 16; i++ {
+			k := subKey32(&m, r, i&7) // usa 8 palavras de mensagem
 			h.state[i] = round32(h.state[i], k, r)
 		}
-		mixState256(&h.state)
+		mixState512(&h.state)
 	}
 
-	// aplica Miyaguchi-Preneel: H = f(H, M) ⊕ M ⊕ H
-	for i := 0; i < 8; i++ {
-		h.state[i] ^= m[i&3] ^ prev[i]
+	// Miyaguchi-Preneel: H = f(H, M) ⊕ M ⊕ H_prev
+	for i := 0; i < 16; i++ {
+		h.state[i] ^= m[i&7] ^ prev[i]
+	}
+}
+
+// ARX primitives
+
+func rotl32(x uint32, n int) uint32 {
+	return bits.RotateLeft32(x, n)
+}
+
+func confuse32(x uint32) uint32 {
+	x ^= 0xA5A5A5A5
+	x += 0x3C3C3C3C
+	x = rotl32(x, 7)
+	return x
+}
+
+func round32(x, k uint32, r int) uint32 {
+	x += k
+	x = confuse32(x)
+	x = rotl32(x, (r+3)&31)
+	x ^= k
+	x = rotl32(x, (r+5)&31)
+	return x
+}
+
+func subKey32(k *[8]uint32, round, i int) uint32 {
+	base := k[(i+round)&7]
+	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
+}
+
+func mixState512(state *[16]uint32) {
+	for i := 0; i < 16; i++ {
+		state[i] ^= rotl32(state[(i+3)&15], (7*i+13)&31)
 	}
 }
 

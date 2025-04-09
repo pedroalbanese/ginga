@@ -12,26 +12,26 @@ const (
 	internalRounds = 10
 )
 
-type whirlxHash struct {
+type gingaHash struct {
 	state [16]uint32
 	buf   []byte
 	len   uint64
 }
 
 func New() hash.Hash {
-	return &whirlxHash{
+	return &gingaHash{
 		state: [16]uint32{
-			0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBAADF00D,
-			0x8BADF00D, 0x1337C0DE, 0x0BADC0DE, 0xFACEB00C,
-			0x0D15EA5E, 0xC001D00D, 0xABADBABE, 0xDEADC0DE,
-			0xFEEDBEEF, 0xBAD22222, 0xDEAD10CC, 0xCAFED00D,
+			0x243F6A88, 0x85A308D3, 0x13198A2E, 0x03707344,
+			0xA4093822, 0x299F31D0, 0x082EFA98, 0xEC4E6C89,
+			0x452821E6, 0x38D01377, 0xBE5466CF, 0x34E90C6C,
+			0xC0AC29B7, 0xC97C50DD, 0x3F84D5B5, 0xB5470917,
 		},
 		buf: make([]byte, 0, BlockSize),
 		len: 0,
 	}
 }
 
-func (h *whirlxHash) Write(p []byte) (n int, err error) {
+func (h *gingaHash) Write(p []byte) (n int, err error) {
 	h.buf = append(h.buf, p...)
 	h.len += uint64(len(p))
 
@@ -42,7 +42,7 @@ func (h *whirlxHash) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (h *whirlxHash) Sum(b []byte) []byte {
+func (h *gingaHash) Sum(b []byte) []byte {
 	tmp := make([]byte, len(h.buf))
 	copy(tmp, h.buf)
 
@@ -68,21 +68,21 @@ func (h *whirlxHash) Sum(b []byte) []byte {
 	return append(b, out...)
 }
 
-func (h *whirlxHash) Reset() {
+func (h *gingaHash) Reset() {
 	h.state = [16]uint32{
-		0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBAADF00D,
-		0x8BADF00D, 0x1337C0DE, 0x0BADC0DE, 0xFACEB00C,
-		0x0D15EA5E, 0xC001D00D, 0xABADBABE, 0xDEADC0DE,
-		0xFEEDBEEF, 0xBAD22222, 0xDEAD10CC, 0xCAFED00D,
+		0x243F6A88, 0x85A308D3, 0x13198A2E, 0x03707344,
+		0xA4093822, 0x299F31D0, 0x082EFA98, 0xEC4E6C89,
+		0x452821E6, 0x38D01377, 0xBE5466CF, 0x34E90C6C,
+		0xC0AC29B7, 0xC97C50DD, 0x3F84D5B5, 0xB5470917,
 	}
 	h.buf = h.buf[:0]
 	h.len = 0
 }
 
-func (h *whirlxHash) Size() int      { return DigestSize }
-func (h *whirlxHash) BlockSize() int { return BlockSize }
+func (h *gingaHash) Size() int      { return DigestSize }
+func (h *gingaHash) BlockSize() int { return BlockSize }
 
-func (h *whirlxHash) processBlock(block []byte) {
+func (h *gingaHash) processBlock(block []byte) {
 	var m [8]uint32 // bloco com 8 palavras de 32 bits
 	for i := 0; i < 8; i++ {
 		m[i] = binary.LittleEndian.Uint32(block[i*4 : (i+1)*4])

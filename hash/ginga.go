@@ -9,7 +9,7 @@ import (
 const (
 	BlockSize      = 32
 	DigestSize     = 32
-	internalRounds = 10
+	internalRounds = 8
 )
 
 type gingaHash struct {

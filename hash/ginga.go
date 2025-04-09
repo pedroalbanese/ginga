@@ -127,29 +127,6 @@ func round32(x, k uint32, r int) uint32 {
 	return x
 }
 
-// ARX primitives
-
-func rotl32(x uint32, n int) uint32 {
-	return bits.RotateLeft32(x, n)
-}
-
-func confuse32(x uint32) uint32 {
-	x ^= 0xA5A5A5A5
-	x += 0x3C3C3C3C
-	x = rotl32(x, 7)
-	return x
-}
-
-func round32(x, k uint32, r int) uint32 {
-	x += k
-	x = confuse32(x)
-	x = rotl32(x, (r+3)&31)
-	x ^= k
-	x = rotl32(x, (r+5)&31)
-	return x
-}
-
-
 func subKey32(k *[8]uint32, round, i int) uint32 {
 	base := k[(i+round)&7]
 	return rotl32(base^uint32(i*73+round*91), (round+i)&31)

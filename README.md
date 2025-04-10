@@ -1,9 +1,9 @@
 # Ginga
 Ginga Lightweight Block Cipher & Hash Function ARX-based
 
-## 🔐 Descrição Matemática do Algoritmo WhirlX
+## 🔐 Descrição Matemática do Algoritmo
 
-O algoritmo WhirlX é uma cifra de bloco baseada em operações **ARX** (Addition, Rotation, XOR), com as seguintes definiições:
+O algoritmo Ginga é uma cifra de bloco baseada em operações **ARX** (Addition, Rotation, XOR), com as seguintes definiições:
 
 - **Tamanho do bloco:** $16$ bytes  
 - **Mensagem de entrada:** $P = (p_0, p_1, \dots, p_{15}) \in \mathbb{F}_{2^8}^{16}$  

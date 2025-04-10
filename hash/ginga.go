@@ -107,6 +107,7 @@ func (h *gingaHash) Reset() {
 func (h *gingaHash) Size() int      { return DigestSize }
 func (h *gingaHash) BlockSize() int { return BlockSize }
 
+/*
 func (h *gingaHash) processBlock(block []byte) {
 	var m [8]uint32 // bloco com 8 palavras de 32 bits
 	for i := 0; i < 8; i++ {
@@ -127,6 +128,28 @@ func (h *gingaHash) processBlock(block []byte) {
 	// Miyaguchi-Preneel: H = f(H, M) ⊕ M ⊕ H_prev
 	for i := 0; i < 16; i++ {
 		h.state[i] ^= m[i&7] ^ prev[i]
+	}
+}
+*/
+
+func (h *gingaHash) processBlock(block []byte) {
+	var m [16]uint32
+	for i := 0; i < 16; i++ {
+		m[i] = binary.LittleEndian.Uint32(block[i*4 : (i+1)*4])
+	}
+
+	prev := h.state
+
+	for r := 0; r < internalRounds; r++ {
+		for i := 0; i < 16; i++ {
+			k := subKey32(&m, r, i) // índice de 0 a 15 agora
+			h.state[i] = round32(h.state[i], k, r)
+		}
+		mixState512(&h.state)
+	}
+
+	for i := 0; i < 16; i++ {
+		h.state[i] ^= m[i] ^ prev[i]
 	}
 }
 
@@ -152,8 +175,15 @@ func round32(x, k uint32, r int) uint32 {
 	return x
 }
 
+/*
 func subKey32(k *[8]uint32, round, i int) uint32 {
 	base := k[(i+round)&7]
+	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
+}
+*/
+
+func subKey32(k *[16]uint32, round, i int) uint32 {
+	base := k[(i+round)&15] // usa 16 palavras agora
 	return rotl32(base^uint32(i*73+round*91), (round+i)&31)
 }
 

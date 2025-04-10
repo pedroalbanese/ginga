@@ -42,6 +42,7 @@ func (h *gingaHash) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+/*
 func (h *gingaHash) Sum(b []byte) []byte {
 	tmp := make([]byte, len(h.buf))
 	copy(tmp, h.buf)
@@ -67,7 +68,36 @@ func (h *gingaHash) Sum(b []byte) []byte {
 	}
 	return append(b, out...)
 }
+*/
 
+func (h *gingaHash) Sum(b []byte) []byte {
+	tmp := make([]byte, len(h.buf))
+	copy(tmp, h.buf)
+
+	tmp = append(tmp, 0x80)
+
+	// Calcula o total de bytes finais: padding + 8 bytes do comprimento
+	paddingSize := (BlockSize - (len(tmp)+8)%BlockSize) % BlockSize
+	tmp = append(tmp, make([]byte, paddingSize)...)
+
+	lenBits := h.len * 8
+	lenBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(lenBytes, lenBits)
+	tmp = append(tmp, lenBytes...)
+
+	// Agora tmp tem tamanho múltiplo de BlockSize
+	for len(tmp) >= BlockSize {
+		h.processBlock(tmp[:BlockSize])
+		tmp = tmp[BlockSize:]
+	}
+
+	out := make([]byte, DigestSize)
+	for i := 0; i < 8; i++ {
+		binary.LittleEndian.PutUint32(out[i*4:(i+1)*4], h.state[i])
+	}
+	return append(b, out...)
+}
+	
 func (h *gingaHash) Reset() {
 	h.state = [16]uint32{
 		0x243F6A88, 0x85A308D3, 0x13198A2E, 0x03707344,

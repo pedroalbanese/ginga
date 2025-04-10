@@ -123,6 +123,7 @@ func (h *gingaHash) processBlock(block []byte) {
 		mixState512(&h.state)
 	}
 
+	// Miyaguchi-Preneel: H = f(H, M) ⊕ M ⊕ H_prev
 	for i := 0; i < 16; i++ {
 		h.state[i] ^= m[i] ^ prev[i]
 	}

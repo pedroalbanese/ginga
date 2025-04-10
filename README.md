@@ -1,6 +1,18 @@
 # Ginga
 Ginga Lightweight Block Cipher & Hash Function ARX-based
 
+A cifra de bloco Ginga é um algoritmo experimental de criptografia baseado na estrutura ARX (Addition-Rotation-XOR), operando sobre blocos de 128 bits divididos em 4 palavras de 32 bits ao longo de 16 rodadas. Seu projeto foca em simplicidade e eficiência, utilizando apenas operações aritméticas e lógicas leves para proporcionar confusão e difusão dos dados. Inspirada na fluidez e imprevisibilidade da ginga na capoeira, a cifra aplica rotações dinâmicas e combinações não lineares para obscurecer relações entre chave, texto claro e texto cifrado. Por ser experimental, Ginga não deve ser utilizada em aplicações críticas de segurança, mas sim para fins educacionais, testes e pesquisa em criptografia baseada em ARX.
+
+## 🌀 O que é Ginga na Capoeira?
+
+Na capoeira, a **ginga** é o movimento fundamental e contínuo que o praticante realiza com o corpo, principalmente as pernas, quadris e braços.  
+Mas ela não é só um passo — é uma *dança estratégica*. Aqui está o que ela representa:
+
+- 🔁 **Movimento constante**: a ginga evita que o capoeirista fique parado e previsível.  
+- 🎭 **Confundir o adversário**: com deslocamentos ritmados e corpo solto, é possível esconder a intenção real (ataque ou defesa).  
+- 🔄 **Rotação e esquiva**: envolve giros, mudanças de base e direção, dificultando golpes diretos.  
+- 🧠 **Desestabilização mental**: a incerteza do próximo movimento confunde o oponente.
+
 ## 🔐 Descrição Matemática do Algoritmo
 
 O algoritmo Ginga é uma cifra de bloco baseada em operações **ARX** (Addition, Rotation, XOR), com as seguintes definições:
@@ -102,6 +114,16 @@ S \leftarrow \text{mixState}(S)
 $$
 
 A cifra resulta em $C = S$ após $R$ rodadas.
+
+## ⚠️ Aviso!
+
+Este algoritmo é fornecido **exclusivamente para fins educacionais e de pesquisa**.
+
+- **Não utilize em produção.**
+- Não há garantias de segurança ou resistência contra ataques criptográficos modernos.
+- Use algoritmos padronizados e amplamente analisados para aplicações reais.
+
+Este projeto tem o objetivo de aprendizado e experimentação com construção de primitivas criptográficas.
 
 ## Contribua
 **Use _issues_ para tudo**

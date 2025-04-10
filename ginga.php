@@ -1,112 +1,122 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
+<?php
 
-#define BLOCK_SIZE 16
-#define ROUNDS 16
+define('BLOCK_SIZE', 16);
+define('ROUNDS', 16);
 
-// --- ARX operations (iguais) ---
+// --- Funções auxiliares ARX ---
 
-uint32_t rotl32(uint32_t x, int n) { return (x << n) | (x >> (32 - n)); }
-uint32_t rotr32(uint32_t x, int n) { return (x >> n) | (x << (32 - n)); }
-
-uint32_t confuse32(uint32_t x) {
-    x ^= 0xA5A5A5A5;
-    x += 0x3C3C3C3C;
-    return rotl32(x, 7);
+function rotl32($x, $n) {
+    return (($x << $n) | ($x >> (32 - $n))) & 0xFFFFFFFF;
 }
 
-uint32_t deconfuse32(uint32_t x) {
-    x = rotr32(x, 7);
-    x -= 0x3C3C3C3C;
-    x ^= 0xA5A5A5A5;
-    return x;
+function rotr32($x, $n) {
+    return (($x >> $n) | ($x << (32 - $n))) & 0xFFFFFFFF;
 }
 
-uint32_t round32(uint32_t x, uint32_t k, int r) {
-    x += k;
-    x = confuse32(x);
-    x = rotl32(x, (r + 3) & 31);
-    x ^= k;
-    x = rotl32(x, (r + 5) & 31);
-    return x;
+function confuse32($x) {
+    $x ^= 0xA5A5A5A5;
+    $x = ($x + 0x3C3C3C3C) & 0xFFFFFFFF;
+    $x = rotl32($x, 7);
+    return $x;
 }
 
-uint32_t subKey32(uint32_t *k, int round, int i) {
-    uint32_t base = k[(i + round) & 7];
-    return rotl32(base ^ (i * 73 + round * 91), (round + i) & 31);
+function deconfuse32($x) {
+    $x = rotr32($x, 7);
+    $x = ($x - 0x3C3C3C3C) & 0xFFFFFFFF;
+    $x ^= 0xA5A5A5A5;
+    return $x;
 }
 
-void mixState32(uint32_t *state) {
-    state[0] ^= rotl32(state[1], 5);
-    state[1] ^= rotl32(state[2], 11);
-    state[2] ^= rotl32(state[3], 17);
-    state[3] ^= rotl32(state[0], 23);
+function round32($x, $k, $r) {
+    $x = ($x + $k) & 0xFFFFFFFF;
+    $x = confuse32($x);
+    $x = rotl32($x, ($r + 3) & 31);
+    $x ^= $k;
+    $x = rotl32($x, ($r + 5) & 31);
+    return $x;
 }
 
-// --- Cifra Ginga com bloco de 16 bytes ---
+function invRound32($x, $k, $r) {
+    $x = rotr32($x, ($r + 5) & 31);
+    $x ^= $k;
+    $x = rotr32($x, ($r + 3) & 31);
+    $x = deconfuse32($x);
+    $x = ($x - $k) & 0xFFFFFFFF;
+    return $x;
+}
 
-void ginga_block_encrypt(const uint8_t *input, const uint8_t *key, uint8_t *output) {
-    uint32_t c[4], k[8];
-    memcpy(c, input, 16);
-    memcpy(k, key, 32);
+function subKey32($k, $round, $i) {
+    $base = $k[($i + $round) & 7];
+    return rotl32($base ^ ($i * 73 + $round * 91), ($round + $i) & 31);
+}
 
-    for (int r = 0; r < ROUNDS; r++) {
-        for (int i = 0; i < 4; i++) {
-            uint32_t subk = subKey32(k, r, i);
-            c[i] = round32(c[i], subk, r);
+function mixState32(&$s) {
+    $s[0] ^= rotl32($s[1], 5);
+    $s[1] ^= rotl32($s[2], 11);
+    $s[2] ^= rotl32($s[3], 17);
+    $s[3] ^= rotl32($s[0], 23);
+}
+
+function invMixState32(&$s) {
+    $s[3] ^= rotl32($s[0], 23);
+    $s[2] ^= rotl32($s[3], 17);
+    $s[1] ^= rotl32($s[2], 11);
+    $s[0] ^= rotl32($s[1], 5);
+}
+
+function encryptBlock($plain, $key) {
+    $c = array_values(unpack("V*", $plain));
+    $k = array_values(unpack("V*", $key));
+
+    for ($r = 0; $r < ROUNDS; $r++) {
+        for ($i = 0; $i < 4; $i++) {
+            $subk = subKey32($k, $r, $i);
+            $c[$i] = round32($c[$i], $subk, $r);
         }
-        mixState32(c);
+        mixState32($c);
     }
-    memcpy(output, c, 16);
+    return pack("V*", ...$c);
 }
 
-// --- CTR Mode ---
+function decryptBlock($cipher, $key) {
+    $p = array_values(unpack("V*", $cipher));
+    $k = array_values(unpack("V*", $key));
 
-void increment_counter(uint8_t *counter) {
-    for (int i = BLOCK_SIZE - 1; i >= 0; i--) {
-        if (++counter[i]) break;
+    for ($r = ROUNDS - 1; $r >= 0; $r--) {
+        invMixState32($p);
+        for ($i = 0; $i < 4; $i++) {
+            $subk = subKey32($k, $r, $i);
+            $p[$i] = invRound32($p[$i], $subk, $r);
+        }
     }
+    return pack("V*", ...$p);
 }
 
-void ginga_ctr_crypt(const uint8_t *input, const uint8_t *key, uint8_t *output, size_t len, uint8_t *iv) {
-    uint8_t keystream[BLOCK_SIZE];
-    uint8_t counter[BLOCK_SIZE];
-    memcpy(counter, iv, BLOCK_SIZE);
+function ctrMode($data, $key, $nonce) {
+    $output = '';
+    $blockCount = ceil(strlen($data) / BLOCK_SIZE);
 
-    for (size_t i = 0; i < len; i += BLOCK_SIZE) {
-        ginga_block_encrypt(counter, key, keystream);
-        size_t block_len = (len - i < BLOCK_SIZE) ? len - i : BLOCK_SIZE;
+    for ($i = 0; $i < $blockCount; $i++) {
+        $counter = substr_replace($nonce, pack("N", $i), 12, 4); // ← Corrigido aqui
+        $keystream = encryptBlock($counter, $key);
 
-        for (size_t j = 0; j < block_len; j++)
-            output[i + j] = input[i + j] ^ keystream[j];
-
-        increment_counter(counter);
+        $block = substr($data, $i * BLOCK_SIZE, BLOCK_SIZE);
+        $output .= $block ^ substr($keystream, 0, strlen($block));
     }
+
+    return $output;
 }
 
-// --- Exemplo principal ---
+// --- Exemplo de uso ---
 
-int main() {
-    uint8_t key[32] = {0};
-    uint8_t iv[BLOCK_SIZE] = {0};
+$key = str_repeat("\x00", 32);   // 256 bits = 32 bytes, todos 0x00
+$nonce = str_repeat("\x00", 16); // 128 bits = 16 bytes, todos 0x00
+$plaintext = "Mensagem confidencial com Ginga-CTR em PHP";
 
-    const char *text = "Mensagem secreta em modo CTR sem padding";
-    size_t len = strlen(text);
 
-    uint8_t ciphertext[128] = {0};
-    uint8_t decrypted[128] = {0};
+$ciphertext = ctrMode($plaintext, $key, $nonce);
+$decrypted = ctrMode($ciphertext, $key, $nonce);
 
-    ginga_ctr_crypt((uint8_t *)text, key, ciphertext, len, iv);
-
-    // Reset IV para descriptografar
-    memset(iv, 0, BLOCK_SIZE);
-    ginga_ctr_crypt(ciphertext, key, decrypted, len, iv);
-
-    printf("Texto original:      %s\n", text);
-    printf("Ciphertext (hex):    ");
-    for (size_t i = 0; i < len; i++) printf("%02x", ciphertext[i]);
-    printf("\nTexto descriptografado: %s\n", decrypted);
-
-    return 0;
-}
+echo "Plaintext : " . trim($plaintext) . PHP_EOL;
+echo "Ciphertext (hex): " . bin2hex($ciphertext) . PHP_EOL;
+echo "Decrypted : " . trim($decrypted) . PHP_EOL;

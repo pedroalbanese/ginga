@@ -101,6 +101,28 @@ function hmacGinga($key, $message) {
     return gingaHash($o_key_pad . $innerHash);
 }
 
+function hkdfGinga($ikm, $length, $salt = "", $info = "") {
+    $hashLen = GINGA_DIGEST_SIZE;
+
+    // Etapa 1: Extract
+    if ($salt === "") {
+        $salt = str_repeat("\0", $hashLen);
+    }
+    $prk = hmacGinga($salt, $ikm);
+
+    // Etapa 2: Expand
+    $okm = "";
+    $t = "";
+    $counter = 1;
+    while (strlen($okm) < $length) {
+        $t = hmacGinga($prk, $t . $info . chr($counter));
+        $okm .= $t;
+        $counter++;
+    }
+
+    return substr($okm, 0, $length);
+}
+
 // --- Exemplo de uso ---
 $key = "chave-secreta";
 $mensagem = "Exemplo da função hash Ginga em PHP.";
@@ -111,3 +133,11 @@ $hmac = hmacGinga($key, $mensagem);
 echo "Mensagem: " . $mensagem . PHP_EOL;
 echo "Hash (hex): " . bin2hex($hash) . PHP_EOL;
 echo "HMAC-Ginga (hex): " . bin2hex($hmac) . PHP_EOL;
+
+$keyMaterial = "material-chave-bruto";
+$salt = "sal-de-exemplo";
+$info = "contexto";
+$outputLength = 64; // 64 bytes
+
+$okm = hkdfGinga($keyMaterial, $outputLength, $salt, $info);
+echo "HKDF-Ginga OKM (hex): " . bin2hex($okm) . PHP_EOL;

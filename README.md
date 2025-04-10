@@ -3,6 +3,8 @@ Ginga Lightweight Block Cipher & Hash Function ARX-based
 
 A cifra de bloco Ginga é um algoritmo experimental de criptografia baseado na estrutura ARX (Addition-Rotation-XOR), operando sobre blocos de 128 bits divididos em 4 palavras de 32 bits ao longo de 16 rodadas. Seu projeto foca em simplicidade e eficiência, utilizando apenas operações aritméticas e lógicas leves para proporcionar confusão e difusão dos dados. Inspirada na fluidez e imprevisibilidade da ginga na capoeira, a cifra aplica rotações dinâmicas e combinações não lineares para obscurecer relações entre chave, texto claro e texto cifrado. Por ser experimental, Ginga não deve ser utilizada em aplicações críticas de segurança, mas sim para fins educacionais, testes e pesquisa em criptografia baseada em ARX.
 
+*É um jogo, é uma dança, é uma briga* - Paulo Cesar Pinheiro - Capoeira de Bezouro
+
 ## 🌀 O que é Ginga na Capoeira?
 
 Na capoeira, a **ginga** é o movimento fundamental e contínuo que o praticante realiza com o corpo, principalmente as pernas, quadris e braços.  

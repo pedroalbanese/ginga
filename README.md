@@ -129,7 +129,6 @@ Este projeto tem o objetivo de aprendizado e experimentação com construção d
 **Use _issues_ para tudo**
 - Você pode ajudar e receber ajuda por meio de:
   - Relato de dúvidas e perguntas
-
 - Você pode contribuir por meio de:
   - Relato de problemas (_issues_)
   - Sugestão de novos recursos ou melhorias

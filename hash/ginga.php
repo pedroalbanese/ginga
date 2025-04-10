@@ -77,9 +77,37 @@ function gingaHash($msg) {
     return $digest;
 }
 
+function hmacGinga($key, $message) {
+    $blockSize = GINGA_BLOCK_SIZE;
+
+    // Passo 1: Ajustar tamanho da chave
+    if (strlen($key) > $blockSize) {
+        $key = gingaHash($key); // Reduz com hash
+    }
+    if (strlen($key) < $blockSize) {
+        $key = str_pad($key, $blockSize, "\0"); // Preenche com zeros
+    }
+
+    // Passo 2: Criar o padding interno e externo
+    $o_key_pad = $i_key_pad = '';
+    for ($i = 0; $i < $blockSize; $i++) {
+        $k = ord($key[$i]);
+        $o_key_pad .= chr($k ^ 0x5c);
+        $i_key_pad .= chr($k ^ 0x36);
+    }
+
+    // Passo 3: Aplicar HMAC
+    $innerHash = gingaHash($i_key_pad . $message);
+    return gingaHash($o_key_pad . $innerHash);
+}
+
 // --- Exemplo de uso ---
+$key = "chave-secreta";
 $mensagem = "Exemplo da função hash Ginga em PHP.";
 $hash = gingaHash($mensagem);
 
+$hmac = hmacGinga($key, $mensagem);
+
 echo "Mensagem: " . $mensagem . PHP_EOL;
 echo "Hash (hex): " . bin2hex($hash) . PHP_EOL;
+echo "HMAC-Ginga (hex): " . bin2hex($hmac) . PHP_EOL;

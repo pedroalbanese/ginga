@@ -1,2 +1,2 @@
 # Ginga
-Ginga Lightweight Block Cipher & Hash Function
+Ginga Lightweight Block Cipher & Hash Function ARX-based

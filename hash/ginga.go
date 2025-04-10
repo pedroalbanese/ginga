@@ -42,7 +42,6 @@ func (h *gingaHash) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-/*
 func (h *gingaHash) Sum(b []byte) []byte {
 	tmp := make([]byte, len(h.buf))
 	copy(tmp, h.buf)
@@ -67,30 +66,6 @@ func (h *gingaHash) Sum(b []byte) []byte {
 		binary.LittleEndian.PutUint32(out[i*4:(i+1)*4], h.state[i])
 	}
 	return append(b, out...)
-}
-*/
-
-func (h *gingaHash) Sum(b []byte) []byte {
-	tmp := make([]byte, len(h.buf))
-	copy(tmp, h.buf)
-
-	tmp = append(tmp, 0x80)
-	for len(tmp)%BlockSize != 24 { // deixar espaço para 8 bytes
-		tmp = append(tmp, 0x00)
-	}
-
-	lenBits := h.len * 8
-	lenBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(lenBytes, lenBits)
-	tmp = append(tmp, lenBytes...)
-
-	for len(tmp) >= BlockSize {
-		block := tmp[:BlockSize]
-		tmp = tmp[BlockSize:]
-		h.processBlock(block)
-	}
-
-	return append(b, h.output()...)
 }
 
 func (h *gingaHash) Reset() {

@@ -117,6 +117,12 @@ $$
 
 A cifra resulta em $C = S$ após $R$ rodadas.
 
+## Melhores Resultados em Testes Comparativos
+
+- [Ginga Block Cipher](https://go.dev/play/p/bQvEQBAqJKi)
+- [AES Block Cipher](https://go.dev/play/p/qqIrQRLwcB-)
+- [GingaHash vs. SHA256](https://go.dev/play/p/KcfIN5qZF0a)
+
 ## ⚠️ Aviso!
 
 Este algoritmo é fornecido **exclusivamente para fins educacionais e de pesquisa**.

@@ -119,8 +119,8 @@ A cifra resulta em $C = S$ após $R$ rodadas.
 
 ## 📈 Melhores Resultados em Testes Comparativos
 
-- [Ginga Block Cipher](https://go.dev/play/p/bQvEQBAqJKi)
-- [AES Block Cipher](https://go.dev/play/p/qqIrQRLwcB-)
+- [Ginga Block Cipher](https://go.dev/play/p/o9f1alu-wqO)
+- [AES Block Cipher](https://go.dev/play/p/_QlSFbhByaC)
 - [GingaHash vs. SHA256](https://go.dev/play/p/KcfIN5qZF0a)
 
 ## ⚠️ Aviso!
